@@ -1,21 +1,33 @@
-non-word-character = ";" | ":" | "." | "," | "(" | ")" | "[" | "]" | "{" | "}" | "\" | single-quote | double-quote
+At a low level, the syntax can be described like this:
 
-word-character = (anything not a special character)
+	word = single-quoted-string | double-quoted-string | bareword
+	
+	phrase = word { word }
+	
+	argument-list = parameterized { "," parameterized }
+	
+	parameterized-subject = phrase
+	
+	parameterized = parameterized-subject [ "(" argument-list ")" ]
+	
+	command-block = "=" command | "{" block "}"
+	
+	modifier-list = { ":" parameterized }
+	
+	command-subject = parameterized
+	
+	command = command-subject modifier-list command-block
+	
+	command-delimiter = ";" | "\n"
+	
+	block = command { command-delimiter command }
 
-bareword = word-character, { word-character } ;
+Class definitions are then built on top of commands.  A class definition
+is indicated by a command where the subject's phrase starts with the word 'class'.
+That command's modifiers indicate things about the class itself, and sub-commands
+in that command's block define instance fields.  e.g.
 
-word = bareword | single-quoted-string | double-quoted-string ;
-
-phrase = word { word }
-
-argument-list = phrase { "," phrase }
-
-modifier = phrase [ "(" argument-list ")" ]
-
-field-modifier-alias = "alias field modifier" word "=" phrase
-
-class-field-definition = phrase { ":" modifier }
-
-class-body = class-field-definition { "\n" class-field-definition } 
-
-class-definition = "class" phrase { ":" modifier } [ "{" class-body "}" ]
+	class patient hospitalization : self-keyed {
+		patient ID : integer
+		patient admission date : date
+	}
