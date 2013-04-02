@@ -30,8 +30,6 @@ public class Token implements SourceLocation
 	@Override public int getSourceColumnNumber() { return columnNumber; }
 	
 	public String toString() {
-		if( type == Type.SYMBOL ) return text;
-		
-		return super.toString();
+		return text;
 	}
 }

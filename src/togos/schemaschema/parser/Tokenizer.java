@@ -71,7 +71,7 @@ public class Tokenizer extends BaseStreamSource<Token> implements StreamDestinat
 	
 	protected static boolean isSymbol( char c ) {
 		switch( c ) {
-		case '[': case ']': case '(': case ')': case '{': case '}': case ',': case ';': case ':': case '\n':
+		case '[': case ']': case '(': case ')': case '{': case '}': case ',': case ';': case ':': case '=': case '\n':
 			return true;
 		default:
 			return false;
@@ -86,7 +86,7 @@ public class Tokenizer extends BaseStreamSource<Token> implements StreamDestinat
 		return c == '#';
 	}
 	
-	protected static boolean isWordChar( char c ) {
+	public static boolean isWordChar( char c ) {
 		return !isSymbol(c) && !isWhitespace(c) && !isQuote(c) && !isComment(c);
 	}
 	
