@@ -21,7 +21,7 @@ public class Parameterized extends ASTNode
 			for( Parameterized p : parameters ) {
 				if( !frist ) s += ", ";
 				s += p.toString();
-				frist = true;
+				frist = false;
 			}
 			s += ")";
 		}

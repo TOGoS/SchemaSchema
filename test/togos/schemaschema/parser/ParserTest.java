@@ -15,9 +15,20 @@ public class ParserTest extends TestCase
 		);
 	}
 
-	public void testCmoplicatedCommand() throws Exception {
+	public void testComplicatedCommand() throws Exception {
+		testParse( "foo 'bar baz' : quux(xyzzy) : xuuy quuz('foo bar'(baz)) = what a fine day(apple jacks) : throne" );
+	}
+	
+	public void testAliasCommand() throws Exception {
+		testParse( "alias field modifier 'entity ID' = unsigned integer" );
+	}
+	
+	public void testClassDefCommand() throws Exception {
 		testParse(
-			"foo 'bar baz' : quux(xyzzy) : xuuy quuz('foo bar'(baz)) = what a fine day(apple jacks) : throne"
+			"class x y z {\n" +
+			"\tfoo : string(4)\n" +
+			"\tbar : integer(0, 9999)\n" +
+			"}"
 		);
 	}
 }

@@ -24,7 +24,7 @@ public class Command extends ASTNode
 		} else if( body.commands.length == 1 ) {
 			s += " = " + body.commands[0].toString();
 		} else {
-			s += " {\n\t" + body.toString().replace("\n\t", "\n\t\t") + "\n";
+			s += " {\n\t" + body.toString().replace("\n", "\n\t") + "\n}";
 		}
 		return s;
 	}

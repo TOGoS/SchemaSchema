@@ -1,8 +1,6 @@
 package togos.schemaschema.parser.ast;
 
-import togos.lang.ParseError;
 import togos.lang.SourceLocation;
-import togos.schemaschema.parser.Token;
 import togos.schemaschema.parser.Tokenizer;
 
 public class Word extends ASTNode
