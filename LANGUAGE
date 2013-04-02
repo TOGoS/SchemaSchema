@@ -1,0 +1,21 @@
+non-word-character = ";" | ":" | "." | "," | "(" | ")" | "[" | "]" | "{" | "}" | "\" | single-quote | double-quote
+
+word-character = (anything not a special character)
+
+bareword = word-character, { word-character } ;
+
+word = bareword | single-quoted-string | double-quoted-string ;
+
+phrase = word { word }
+
+argument-list = phrase { "," phrase }
+
+modifier = phrase [ "(" argument-list ")" ]
+
+field-modifier-alias = "alias field modifier" word "=" phrase
+
+class-field-definition = phrase { ":" modifier }
+
+class-body = class-field-definition { "\n" class-field-definition } 
+
+class-definition = "class" phrase { ":" modifier } [ "{" class-body "}" ]
