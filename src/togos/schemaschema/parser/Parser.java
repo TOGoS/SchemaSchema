@@ -16,7 +16,7 @@ import togos.schemaschema.parser.asyncstream.BaseStreamSource;
 import togos.schemaschema.parser.asyncstream.Collector;
 import togos.schemaschema.parser.asyncstream.StreamDestination;
 
-public class Parser extends BaseStreamSource<ASTNode> implements StreamDestination<Token>
+public class Parser extends BaseStreamSource<Command> implements StreamDestination<Token>
 {
 	static class UnexpectedWord extends ParseError {
 		private static final long serialVersionUID = 2664614368054031256L;

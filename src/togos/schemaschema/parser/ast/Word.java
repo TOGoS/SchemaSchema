@@ -12,7 +12,7 @@ public class Word extends ASTNode
 		this.text = text;
 	}
 	
-	public String toString() {
+	public static String quoteIfNecessary( String text ) {
 		boolean needsEscapin = false;
 		char[] chars = text.toCharArray();
 		for( char c : chars ) {
@@ -55,5 +55,9 @@ public class Word extends ASTNode
 		}
 		escaped[j++] = '\'';
 		return new String( escaped, 0, j );
+	}
+	
+	public String toString() {
+		return quoteIfNecessary(this.text);
 	}
 }

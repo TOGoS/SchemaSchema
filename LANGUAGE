@@ -31,3 +31,27 @@ in that command's block define instance fields.  e.g.
 		patient ID : integer
 		patient admission date : date
 	}
+
+Foreign keys
+	
+	class patient {
+		ID : integer : primary key component
+		first name : string
+		last name : string
+	}
+	
+	class patient stay {
+		# Define a foreign key:
+		patient : reference(patient) {
+			# foreign key = our key.
+			# we could also define our key outside the reference block
+			# and then not repeat the modifiers, here
+			ID = patient ID : integer : primary key component
+		}
+		patient admission date : date : primary key component
+		reason for admission : string
+	}
+	
+	class patient incident {
+		patient stay : reference(patient stay) # since key names match, no need to repeat ourselves
+	}
