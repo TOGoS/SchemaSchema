@@ -7,7 +7,8 @@ import togos.lang.SourceLocation;
 
 public class Phrase extends ASTNode
 {
-	public final Phrase EMPTY = new Phrase(new Word[0]);
+	public static final Phrase EMPTY = new Phrase(new Word[0]);
+	
 	public final Word[] words;
 	
 	public Phrase( Word[] words ) {
