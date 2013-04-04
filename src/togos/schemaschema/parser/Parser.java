@@ -16,6 +16,7 @@ import togos.schemaschema.parser.asyncstream.BaseStreamSource;
 import togos.schemaschema.parser.asyncstream.Collector;
 import togos.schemaschema.parser.asyncstream.StreamDestination;
 
+@SuppressWarnings("incomplete-switch")
 public class Parser extends BaseStreamSource<Command> implements StreamDestination<Token>
 {
 	static class UnexpectedWord extends ParseError {
