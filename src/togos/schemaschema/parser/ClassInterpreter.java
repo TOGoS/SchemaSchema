@@ -29,10 +29,22 @@ public class ClassInterpreter<V extends ObjectType> extends BaseStreamSource<V> 
 		return (V)c;
 	}
 	
+	protected void defineSimpleField( Command fieldNode,
+		LinkedHashMap<String,FieldSpec> fieldSpecs,
+		LinkedHashMap<String,IndexSpec> indexSpecs,
+		LinkedHashMap<String,ForeignKeySpec> fkSpecs
+	) throws ParseError {
+		String fieldName = singleString(fieldNode.subject, "field name");
+		if( fieldSpecs.containsKey(fieldName) ) {
+			throw new ParseError( "Field '"+fieldName+"' already defined", fieldNode.sLoc );
+		}
+		/* TODO */
+	}
+	
 	public ObjectType parseClass( String name, Parameterized[] modifiers, Block body ) throws ParseError {
 		LinkedHashMap<String,FieldSpec> fieldSpecs = new LinkedHashMap<String,FieldSpec>();
 		LinkedHashMap<String,IndexSpec> indexSpecs = new LinkedHashMap<String,IndexSpec>();
-		LinkedHashMap<String,ForeignKeySpec> foreignKeySpecs = new LinkedHashMap<String,ForeignKeySpec>();
+		LinkedHashMap<String,ForeignKeySpec> fkSpecs = new LinkedHashMap<String,ForeignKeySpec>();
 		
 		for( Command fieldCommand : body.commands ) {
 			for( Parameterized fieldNameParameter : fieldCommand.subject.parameters ) {
@@ -84,6 +96,15 @@ public class ClassInterpreter<V extends ObjectType> extends BaseStreamSource<V> 
 						} else {
 							localFieldNode = fkCommand;
 						}
+						
+						String localFieldName = singleString(localFieldNode.subject, "local field name");
+						if( fieldSpecs.containsKey(localFieldName) && localFieldNode.modifiers.length > 0 ) {
+							throw new ParseError(
+								"Cannot modify already-defined local field '"+localFieldName+
+								"' in foreign key specification", localFieldNode.modifiers[0].sLoc
+							);
+						}
+						defineSimpleField( localFieldNode, fieldSpecs, indexSpecs, fkSpecs );
 					}
 					//fkSpec
 					//fieldType = new ForeignKeyReferenceType( singleString(mod.parameters[0], "referenced class name"), Types.REFERENCE, fkSpec);
@@ -107,7 +128,7 @@ public class ClassInterpreter<V extends ObjectType> extends BaseStreamSource<V> 
 			indexSpecs.put("primary", new IndexSpec("primary", fieldSpecs));
 		}
 		
-		return new ObjectType( name, Types.OBJECT, fieldSpecs, indexSpecs, foreignKeySpecs );
+		return new ObjectType( name, Types.OBJECT, fieldSpecs, indexSpecs, fkSpecs );
 	}
 	
 	@Override public void data(Command value) throws Exception {
