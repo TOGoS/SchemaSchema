@@ -26,4 +26,8 @@ public class ObjectType implements Type
 	
 	@Override public String getName() { return name; }
 	@Override public Type getParentType() { return Types.OBJECT; }
+	
+	public String toString() {
+		return "class "+name+" {\n" + StringUtil.indent("\t", StringUtil.join("\n", fieldsByName.values())) + "\n}";
+	}
 }

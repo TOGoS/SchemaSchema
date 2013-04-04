@@ -1,7 +1,9 @@
 package togos.schemaschema.parser;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.Map;
 
 import togos.lang.ParseError;
 import togos.schemaschema.FieldSpec;
@@ -25,20 +27,63 @@ public class ClassInterpreter<V extends ObjectType> extends BaseStreamSource<V> 
 		return p.subject.unquotedText();
 	}
 	
+	protected Map<String,Type> types = new HashMap<String,Type>();
+	
 	protected V process( ObjectType c ) {
 		return (V)c;
 	}
 	
-	protected void defineSimpleField( Command fieldNode,
+	protected FieldSpec defineSimpleField(
+		Command fieldCommand,
 		LinkedHashMap<String,FieldSpec> fieldSpecs,
 		LinkedHashMap<String,IndexSpec> indexSpecs,
 		LinkedHashMap<String,ForeignKeySpec> fkSpecs
 	) throws ParseError {
-		String fieldName = singleString(fieldNode.subject, "field name");
+		String fieldName = singleString(fieldCommand.subject, "field name");
 		if( fieldSpecs.containsKey(fieldName) ) {
-			throw new ParseError( "Field '"+fieldName+"' already defined", fieldNode.sLoc );
+			throw new ParseError( "Field '"+fieldName+"' already defined", fieldCommand.sLoc );
 		}
-		/* TODO */
+		
+		Type type = null;
+		boolean isNullable = false;
+		for( Parameterized modifier : fieldCommand.modifiers ) {
+			String modText = modifier.subject.unquotedText();
+			if( "nullable".equals(modText) ) {
+				isNullable = true;
+			} else if( types.containsKey(modText) ) {
+				if( type != null ) {
+					throw new ParseError(
+						"Cannot redefine type of '"+fieldName+"' from '"+type.getName()+"' to '"+modText,
+						modifier.sLoc
+					);
+				}
+				type = types.get(modText);
+			} else {
+				throw new ParseError(
+					"Unrecognised field modifier: '"+modText+"'", modifier.sLoc
+				);
+			}
+		}
+		
+		FieldSpec fieldSpec = new FieldSpec( fieldName, type, isNullable );
+		fieldSpecs.put( fieldSpec.name, fieldSpec );
+		return fieldSpec;
+	}
+	
+	protected FieldSpec getSimpleField(
+		Command fieldCommand,
+		LinkedHashMap<String,FieldSpec> fieldSpecs,
+		LinkedHashMap<String,IndexSpec> indexSpecs,
+		LinkedHashMap<String,ForeignKeySpec> fkSpecs
+	) throws ParseError {
+		String fieldName = singleString(fieldCommand.subject, "field name");
+		FieldSpec fieldSpec = fieldSpecs.get(fieldName);
+		if( fieldSpec == null ) {
+			fieldSpec = defineSimpleField(fieldCommand, fieldSpecs, indexSpecs, fkSpecs);
+		} else if( fieldCommand.modifiers.length > 0 ) {
+			throw new ParseError( "Cannot redefine field '"+fieldName+"'", fieldCommand.sLoc );
+		}
+		return fieldSpec;
 	}
 	
 	public ObjectType parseClass( String name, Parameterized[] modifiers, Block body ) throws ParseError {
@@ -50,12 +95,9 @@ public class ClassInterpreter<V extends ObjectType> extends BaseStreamSource<V> 
 			for( Parameterized fieldNameParameter : fieldCommand.subject.parameters ) {
 				throw new ParseError("Field name cannot have parameters", fieldNameParameter.sLoc );
 			}
-			String fieldName = fieldCommand.subject.subject.unquotedText();
-			boolean isReference;
-			Type fieldType = null;
+			Block referenceBody = null;
 			for( Parameterized mod : fieldCommand.modifiers ) {
 				if( "reference".equals(mod.subject.unquotedText()) ) {
-					isReference = true;
 					if( mod.parameters.length != 1 ) {
 						throw new ParseError(
 							"'reference' field modifier takes a single parameter: "+
@@ -74,44 +116,43 @@ public class ClassInterpreter<V extends ObjectType> extends BaseStreamSource<V> 
 							fieldCommand.body.sLoc
 						);
 					}
-					ArrayList<ForeignKeySpec.Component> fkComponents = new ArrayList<ForeignKeySpec.Component>();
-					for( Command fkCommand : fieldCommand.body.commands ) {
-						String foreignFieldName = singleString( fkCommand.subject, "foreign field name" );
-						
-						Command localFieldNode;
-						if( fkCommand.body != null ) {
-							if( fkCommand.body.commands.length != 1 ) {
-								throw new ParseError(
-									"Foreign key component requires exactly 0 or 1 local field specifications; given "+
-									fkCommand.body.commands.length, fkCommand.body.sLoc
-								);
-							}
-							if( fkCommand.modifiers.length != 0 ){
-								throw new ParseError(
-									"Modifiers not allowed for foreign field specification",
-									fkCommand.modifiers[0].sLoc
-								);
-							}
-							localFieldNode = fkCommand.body.commands[0];
-						} else {
-							localFieldNode = fkCommand;
-						}
-						
-						String localFieldName = singleString(localFieldNode.subject, "local field name");
-						if( fieldSpecs.containsKey(localFieldName) && localFieldNode.modifiers.length > 0 ) {
-							throw new ParseError(
-								"Cannot modify already-defined local field '"+localFieldName+
-								"' in foreign key specification", localFieldNode.modifiers[0].sLoc
-							);
-						}
-						defineSimpleField( localFieldNode, fieldSpecs, indexSpecs, fkSpecs );
-					}
-					//fkSpec
-					//fieldType = new ForeignKeyReferenceType( singleString(mod.parameters[0], "referenced class name"), Types.REFERENCE, fkSpec);
+					referenceBody = fieldCommand.body;
 				}
 			}
-			if( fieldCommand.body != null ) {
-				
+			if( referenceBody != null ) {
+				ArrayList<ForeignKeySpec.Component> fkComponents = new ArrayList<ForeignKeySpec.Component>();
+				for( Command fkCommand : referenceBody.commands ) {
+					String foreignFieldName = singleString( fkCommand.subject, "foreign field name" );
+					
+					Command localFieldNode;
+					if( fkCommand.body != null ) {
+						if( fkCommand.body.commands.length != 1 ) {
+							throw new ParseError(
+								"Foreign key component requires exactly 0 or 1 local field specifications; given "+
+								fkCommand.body.commands.length, fkCommand.body.sLoc
+							);
+						}
+						if( fkCommand.modifiers.length != 0 ){
+							throw new ParseError(
+								"Modifiers not allowed for foreign field specification",
+								fkCommand.modifiers[0].sLoc
+							);
+						}
+						localFieldNode = fkCommand.body.commands[0];
+					} else {
+						localFieldNode = fkCommand;
+					}
+					
+					String localFieldName = singleString(localFieldNode.subject, "local field name");
+					FieldSpec localField = getSimpleField( localFieldNode, fieldSpecs, indexSpecs, fkSpecs );;
+
+					
+					
+				}
+				//fkSpec
+				//fieldType = new ForeignKeyReferenceType( singleString(mod.parameters[0], "referenced class name"), Types.REFERENCE, fkSpec);
+			} else {
+				defineSimpleField( fieldCommand, fieldSpecs, indexSpecs, fkSpecs );
 			}
 		}
 		
@@ -132,15 +173,42 @@ public class ClassInterpreter<V extends ObjectType> extends BaseStreamSource<V> 
 	}
 	
 	@Override public void data(Command value) throws Exception {
-		if( "class".equals(value.subject.subject.words[0].text) ) {
+		String cmd = value.subject.subject.words[0].text;
+		if( "class".equals(cmd) ) {
 			for( Parameterized classNameParameter : value.subject.parameters ) {
 				throw new ParseError("Class name cannot have parameters", classNameParameter.sLoc );
 			}
 			_data( process(parseClass( value.subject.subject.tail().unquotedText(), value.modifiers, value.body )) );
+		} else {
+			throw new ParseError("Unrecognised command: '"+cmd+"'", value.sLoc);
 		}
 	}
 
 	@Override public void end() throws Exception {
 		_end();
+	}
+	
+	public Map<String,V> parse( String source ) throws ParseError {
+		final Map<String,V> types = new LinkedHashMap<String,V>();
+		
+		Tokenizer t = new Tokenizer();
+		Parser p = new Parser();
+		this.pipe(new StreamDestination<V>() {
+			@Override public void data(V t) {
+				types.put( t.name, t );
+			}
+			@Override public void end() { } 
+		});
+		p.pipe(this);
+		t.pipe(p);
+		try {
+			t.data( source.toCharArray() );
+			t.end();
+		} catch( ParseError e ) {
+			throw e;
+		} catch( Exception e ) {
+			throw new RuntimeException(e);
+		}
+		return types;
 	}
 }

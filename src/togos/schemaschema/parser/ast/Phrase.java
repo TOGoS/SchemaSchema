@@ -4,10 +4,20 @@ import java.util.Arrays;
 
 import togos.lang.BaseSourceLocation;
 import togos.lang.SourceLocation;
+import togos.schemaschema.parser.Tokenizer;
 
 public class Phrase extends ASTNode
 {
 	public static final Phrase EMPTY = new Phrase(new Word[0]);
+	
+	public static String quoteIfNecessary( String text ) {
+		for( char c : text.toCharArray() ) {
+			if( c != ' ' && !Tokenizer.isWordChar(c) ) {
+				return Word.quote(text);
+			}
+		}
+		return text;
+	}
 	
 	public final Word[] words;
 	
@@ -36,7 +46,7 @@ public class Phrase extends ASTNode
 	
 	public Phrase tail() {
 		if( words.length <= 1 ) return EMPTY;
-		return new Phrase( Arrays.copyOfRange(words, words.length-1, 1));
+		return new Phrase( Arrays.copyOfRange(words, 1, words.length));
 	}
 	
 	public String unquotedText() {

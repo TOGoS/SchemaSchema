@@ -5,29 +5,11 @@ import togos.schemaschema.parser.Tokenizer;
 
 public class Word extends ASTNode
 {
-	public final String text;
-	
-	public Word( String text, SourceLocation loc ) {
-		super(loc);
-		this.text = text;
-	}
-	
-	public static String quoteIfNecessary( String text ) {
-		boolean needsEscapin = false;
-		char[] chars = text.toCharArray();
-		for( char c : chars ) {
-			if( !Tokenizer.isWordChar(c) ) {
-				needsEscapin = true;
-				break;
-			}
-		}
-		
-		if( !needsEscapin ) return text;
-		
-		char[] escaped = new char[text.length()*2+2];
+	public static String quote( char[] text ) {
+		char[] escaped = new char[text.length*2+2];
 		int j = 0;
 		escaped[j++] = '\'';
-		for( char c : chars ) {
+		for( char c : text ) {
 			switch( c ) {
 			case '\r':
 				escaped[j++] = '\\';
@@ -55,6 +37,26 @@ public class Word extends ASTNode
 		}
 		escaped[j++] = '\'';
 		return new String( escaped, 0, j );
+	}
+	
+	public static String quote( String text ) {
+		return quote( text.toCharArray() );
+	}
+	
+	public static String quoteIfNecessary( String text ) {
+		for( char c : text.toCharArray() ) {
+			if( !Tokenizer.isWordChar(c) ) {
+				return quote(text);
+			}
+		}
+		return text;
+	}
+	
+	public final String text;
+	
+	public Word( String text, SourceLocation loc ) {
+		super(loc);
+		this.text = text;
 	}
 	
 	public String toString() {

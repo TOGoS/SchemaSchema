@@ -1,5 +1,6 @@
 package togos.schemaschema;
 
+import togos.schemaschema.parser.ast.Phrase;
 import togos.schemaschema.parser.ast.Word;
 
 
@@ -16,7 +17,7 @@ public class FieldSpec
 	}
 	
 	public String toString() {
-		String s = Word.quoteIfNecessary(name) + " : " + Word.quoteIfNecessary(type.getName()) + (isNullable ? " : nullable" : "");
+		String s = Phrase.quoteIfNecessary(name) + " : " + Word.quoteIfNecessary(type.getName()) + (isNullable ? " : nullable" : "");
 		if( type instanceof ForeignKeyReferenceType ) {
 			s += "{\n" + StringUtil.indent("\t", ((ForeignKeyReferenceType)type).keySpec.toString()) + "\n}";
 		}
