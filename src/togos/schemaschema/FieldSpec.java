@@ -3,7 +3,6 @@ package togos.schemaschema;
 import togos.schemaschema.parser.ast.Phrase;
 import togos.schemaschema.parser.ast.Word;
 
-
 public class FieldSpec
 {
 	public final String name;

@@ -18,7 +18,7 @@ import togos.schemaschema.parser.ast.Parameterized;
 import togos.schemaschema.parser.asyncstream.BaseStreamSource;
 import togos.schemaschema.parser.asyncstream.StreamDestination;
 
-public class ClassInterpreter<V extends ObjectType> extends BaseStreamSource<V> implements StreamDestination<Command>
+public class SchemaParser<V extends ObjectType> extends BaseStreamSource<V> implements StreamDestination<Command>
 {
 	protected static String singleString( Parameterized p, String contextDescription ) throws ParseError {
 		if( p.parameters.length != 0 ) {

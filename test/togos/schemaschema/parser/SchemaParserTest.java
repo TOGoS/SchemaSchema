@@ -7,7 +7,7 @@ import togos.lang.ParseError;
 import togos.schemaschema.ObjectType;
 import togos.schemaschema.Types;
 
-public class ClassInterpreterTest extends TestCase
+public class SchemaParserTest extends TestCase
 {
 	public void testSimpleClass() throws ParseError {
 		String source =
@@ -16,7 +16,7 @@ public class ClassInterpreterTest extends TestCase
 			"\tstr field : string\n" +
 			"}";
 		
-		ClassInterpreter<ObjectType> ci = new ClassInterpreter<ObjectType>();
+		SchemaParser<ObjectType> ci = new SchemaParser<ObjectType>();
 		ci.types.put("integer", Types.INTEGER);
 		ci.types.put("string", Types.STRING);
 		Map<String,ObjectType> classes = ci.parse(source);
