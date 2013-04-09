@@ -65,7 +65,7 @@ public class SchemaParser<V extends ObjectType> extends BaseStreamSource<V> impl
 					);
 				}
 				type = types.get(modText);
-			} else if( (m = KEY_COMPONENT_MOD_PATTERN.matcher(modText)) != null ) {
+			} else if( (m = KEY_COMPONENT_MOD_PATTERN.matcher(modText)).matches() ) {
 				indexNames.add( m.group(1) );
 			} else {
 				throw new ParseError(
