@@ -3,7 +3,10 @@ package togos.schemaschema.parser;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import togos.lang.ParseError;
 import togos.schemaschema.FieldSpec;
@@ -33,6 +36,8 @@ public class SchemaParser<V extends ObjectType> extends BaseStreamSource<V> impl
 		return (V)c;
 	}
 	
+	static Pattern KEY_COMPONENT_MOD_PATTERN = Pattern.compile("(.*) (key|index) component");
+	
 	protected FieldSpec defineSimpleField(
 		Command fieldCommand,
 		LinkedHashMap<String,FieldSpec> fieldSpecs,
@@ -46,8 +51,10 @@ public class SchemaParser<V extends ObjectType> extends BaseStreamSource<V> impl
 		
 		Type type = null;
 		boolean isNullable = false;
+		LinkedHashSet<String> indexNames = new LinkedHashSet();
 		for( Parameterized modifier : fieldCommand.modifiers ) {
 			String modText = modifier.subject.unquotedText();
+			Matcher m;
 			if( "nullable".equals(modText) ) {
 				isNullable = true;
 			} else if( types.containsKey(modText) ) {
@@ -58,6 +65,8 @@ public class SchemaParser<V extends ObjectType> extends BaseStreamSource<V> impl
 					);
 				}
 				type = types.get(modText);
+			} else if( (m = KEY_COMPONENT_MOD_PATTERN.matcher(modText)) != null ) {
+				indexNames.add( m.group(1) );
 			} else {
 				throw new ParseError(
 					"Unrecognised field modifier: '"+modText+"'", modifier.sLoc
@@ -66,6 +75,15 @@ public class SchemaParser<V extends ObjectType> extends BaseStreamSource<V> impl
 		}
 		
 		FieldSpec fieldSpec = new FieldSpec( fieldName, type, isNullable );
+		for( String indexName : indexNames ) {
+			IndexSpec index = indexSpecs.get(indexName);
+			if( index == null ) {
+				index = new IndexSpec(indexName);
+				indexSpecs.put(indexName, index);
+			}
+			index.fields.put( fieldName, fieldSpec );
+		}
+		
 		fieldSpecs.put( fieldSpec.name, fieldSpec );
 		return fieldSpec;
 	}
@@ -147,7 +165,7 @@ public class SchemaParser<V extends ObjectType> extends BaseStreamSource<V> impl
 					FieldSpec localField = getSimpleField( localFieldNode, fieldSpecs, indexSpecs, fkSpecs );;
 
 					
-					
+					// TODO: Implement rest of this
 				}
 				//fkSpec
 				//fieldType = new ForeignKeyReferenceType( singleString(mod.parameters[0], "referenced class name"), Types.REFERENCE, fkSpec);

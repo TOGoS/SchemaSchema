@@ -10,6 +10,21 @@ import togos.schemaschema.Types;
 
 public class SchemaParserTest extends TestCase
 {
+	SchemaParser<ObjectType> ci;
+	public void setUp() {
+		ci = new SchemaParser<ObjectType>();
+		ci.types.put("integer", Types.INTEGER);
+		ci.types.put("string", Types.STRING);
+	}
+	
+	protected ObjectType parseClass( String source, String className ) throws ParseError {
+		Map<String,ObjectType> classes = ci.parse(source);
+		assertEquals( 1, classes.size() );
+		for( String k : classes.keySet() ) assertEquals(className, k);
+		// assertEquals( source, classes.get("some object").toString() );
+		return classes.get(className);
+	}
+	
 	public void testSimpleClass() throws ParseError {
 		String source =
 			"class some object {\n" +
@@ -17,15 +32,8 @@ public class SchemaParserTest extends TestCase
 			"\tstr field : string\n" +
 			"}";
 		
-		SchemaParser<ObjectType> ci = new SchemaParser<ObjectType>();
-		ci.types.put("integer", Types.INTEGER);
-		ci.types.put("string", Types.STRING);
-		Map<String,ObjectType> classes = ci.parse(source);
-		assertEquals( 1, classes.size() );
-		for( String k : classes.keySet() ) assertEquals("some object", k);
-		assertEquals( source, classes.get("some object").toString() );
-		
-		ObjectType ot = classes.get("some object");
+		ObjectType ot = parseClass( source, "some object" );
+		assertEquals( source, ot.toString() );
 		assertEquals( 2, ot.fieldsByName.size() );
 		
 		{
@@ -44,4 +52,15 @@ public class SchemaParserTest extends TestCase
 			assertSame( Types.STRING, strFieldSpec.type );
 		}
 	}
+	
+	public void testClassWithPrimaryKey() throws ParseError {
+		String source =
+			"class some object {\n" +
+			"\tint field : integer : primary key component\n" +
+			"\tstr field : string : primary key component\n" +
+			"}";
+		
+		ObjectType ot = parseClass( source, "some object" );
+	}
+
 }
