@@ -32,6 +32,55 @@ in that command's block define instance fields.  e.g.
 		patient admission date : date
 	}
 
+Indexes
+
+	class person {
+		ID : integer : non-comparable : primary key  # comparison operations have no meaning, hinting that a hash index may be used
+		first name : string : 'first name' index
+		last name : string : 'last name' index
+		birthdate : date
+		
+		# Explicitly declare an index 
+		index 'birthdate' : tree {
+			# List fields within
+			birthdate
+		}
+	}
+
+Define custom properties
+
+	class-property 'all fields are silly'
+
+	field-property 'value may be of interest to subsystem X'
+	
+	# Define a property that takes a value
+	field-property wickedness : integer
+
+Define custom value types
+	
+	type 'quux'            # Declared but not defined
+	
+	type 'garf' = integer  # Alias to another type
+	
+	type 'moof' : extends quux {
+		# composite type
+		coolness : integer
+		title : string
+	}
+	
+	type 'small integer' = integer(0, 255)
+	
+	type 'a type with type parameters' ( min coolness, max coolness ) : extends moof {
+		default max coolness = 10
+		# min coolness has no default so must be specified
+	}  
+
+Define modifiers as aliases
+
+	modifier 'scrum butt' = integer    # Alias to another modifier
+	modifier 'AIPK' = unsigned integer : auto increment : primary key  # Alias to multiple modifiers
+	modifier 'ignore this modifier' { }   # Empty block means ignore
+
 Foreign keys
 	
 	class patient {

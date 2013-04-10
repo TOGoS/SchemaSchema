@@ -1,6 +1,5 @@
 package togos.schemaschema;
 
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -11,7 +10,7 @@ public class IndexSpec
 	
 	public IndexSpec( String name, Map<String,FieldSpec> fields ) {
 		this.name = name;
-		this.fields = Collections.unmodifiableMap(fields);
+		this.fields = fields;
 	}
 	
 	public IndexSpec( String name ) {

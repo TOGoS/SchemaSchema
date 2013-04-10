@@ -51,7 +51,7 @@ public class SchemaParser<V extends ObjectType> extends BaseStreamSource<V> impl
 		
 		Type type = null;
 		boolean isNullable = false;
-		LinkedHashSet<String> indexNames = new LinkedHashSet();
+		LinkedHashSet<String> indexNames = new LinkedHashSet<String>();
 		for( Parameterized modifier : fieldCommand.modifiers ) {
 			String modText = modifier.subject.unquotedText();
 			Matcher m;
