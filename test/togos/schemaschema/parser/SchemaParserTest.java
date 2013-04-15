@@ -8,6 +8,9 @@ import togos.lang.ParseError;
 import togos.schemaschema.FieldSpec;
 import togos.schemaschema.IndexSpec;
 import togos.schemaschema.ComplexType;
+import togos.schemaschema.Properties;
+import togos.schemaschema.Property;
+import togos.schemaschema.PropertyUtil;
 import togos.schemaschema.SchemaObject;
 import togos.schemaschema.Types;
 import togos.schemaschema.parser.asyncstream.StreamDestination;
@@ -21,8 +24,10 @@ public class SchemaParserTest extends TestCase
 		definedObjects = new HashMap<String,SchemaObject>();
 		
 		ci = new SchemaParser();
-		ci.types.put("integer", Types.INTEGER);
-		ci.types.put("string", Types.STRING);
+		ci.defineFieldModifier("key", SchemaParser.IndexFieldModifierSpec.INSTANCE);
+		ci.defineFieldModifier("index", SchemaParser.IndexFieldModifierSpec.INSTANCE);
+		ci.defineType(Types.INTEGER);
+		ci.defineType(Types.STRING);
 		ci.pipe(new StreamDestination<SchemaObject>() {
 			@Override public void data(SchemaObject value) throws Exception {
 				definedObjects.put( value.getName(), value );
@@ -34,6 +39,16 @@ public class SchemaParserTest extends TestCase
 	protected void assertFieldsNamedProperly( Map<String,FieldSpec> fieldMap ) {
 		for( Map.Entry<String,FieldSpec> e : fieldMap.entrySet() ) {
 			assertEquals( e.getKey(), e.getValue().name );
+		}
+	}
+	
+	protected void assertPropertyValue( Object expectedValue, SchemaObject obj, Property prop ) {
+		if( expectedValue == null && obj.getPropertyValues().get(prop) == null ) {
+		} else {
+			assertEquals( 1, obj.getPropertyValues().get(prop).size() );
+			for( Object v : obj.getPropertyValues().get(prop) ) {
+				assertEquals( expectedValue, v );
+			}
 		}
 	}
 	
@@ -65,24 +80,24 @@ public class SchemaParserTest extends TestCase
 			FieldSpec intFieldSpec = ot.fieldsByName.get("int field");
 			assertNotNull( intFieldSpec );
 			assertEquals( "int field", intFieldSpec.name );
-			assertFalse( intFieldSpec.isNullable );
-			assertSame( Types.INTEGER, intFieldSpec.type );
+			assertPropertyValue( null, intFieldSpec, Properties.NULLABLE );
+			assertPropertyValue( Types.INTEGER, intFieldSpec, Properties.TYPE );
 		}
 		
 		{
 			FieldSpec strFieldSpec = ot.fieldsByName.get("str field");
 			assertNotNull( strFieldSpec );
 			assertEquals( "str field", strFieldSpec.name );
-			assertFalse( strFieldSpec.isNullable );
-			assertSame( Types.STRING, strFieldSpec.type );
+			assertFalse( PropertyUtil.isTrue(strFieldSpec.getPropertyValues(), Properties.NULLABLE) );
+			assertPropertyValue( Types.STRING, strFieldSpec, Properties.TYPE );
 		}
 	}
 	
 	public void testClassWithPrimaryKey() throws ParseError {
 		String source =
 			"class some object {\n" +
-			"\tint field : integer : primary key component\n" +
-			"\tstr field : string : primary key component\n" +
+			"\tint field : integer : key(primary)\n" +
+			"\tstr field : string : key(primary)\n" +
 			"}";
 		
 		ComplexType ot = parseClass( source, "some object" );
@@ -92,6 +107,5 @@ public class SchemaParserTest extends TestCase
 		IndexSpec primaryIndex = ot.indexesByName.get("primary");
 		assertEquals( "primary", primaryIndex.name );
 		assertEquals( 2, primaryIndex.fields.size() );
-		assertFieldsNamedProperly( primaryIndex.fields );
 	}
 }

@@ -137,7 +137,12 @@ public class Tokenizer extends BaseStreamSource<Token> implements StreamDestinat
 			}
 			break;
 		case LINE_COMMENT:
-			if( c == '\n' ) state = State.NO_TOKEN;
+			if( c == '\n' ) {
+				state = State.SYMBOL;
+				tokenBuffer[0] = c;
+				length = 1;
+				flushToken( State.NO_TOKEN );
+			}
 			break;
 		case BAREWORD:
 			if( isQuote(c) ) {
