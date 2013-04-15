@@ -1,5 +1,6 @@
 package togos.schemaschema.parser;
 
+import java.util.HashMap;
 import java.util.Map;
 
 import junit.framework.TestCase;
@@ -9,14 +10,25 @@ import togos.schemaschema.IndexSpec;
 import togos.schemaschema.ComplexType;
 import togos.schemaschema.SchemaObject;
 import togos.schemaschema.Types;
+import togos.schemaschema.parser.asyncstream.StreamDestination;
 
 public class SchemaParserTest extends TestCase
 {
 	SchemaParser ci;
+	Map<String,SchemaObject> definedObjects;
+	
 	public void setUp() {
+		definedObjects = new HashMap<String,SchemaObject>();
+		
 		ci = new SchemaParser();
 		ci.types.put("integer", Types.INTEGER);
 		ci.types.put("string", Types.STRING);
+		ci.pipe(new StreamDestination<SchemaObject>() {
+			@Override public void data(SchemaObject value) throws Exception {
+				definedObjects.put( value.getName(), value );
+			}
+			@Override public void end() throws Exception { }
+		});
 	}
 	
 	protected void assertFieldsNamedProperly( Map<String,FieldSpec> fieldMap ) {
@@ -26,12 +38,12 @@ public class SchemaParserTest extends TestCase
 	}
 	
 	protected ComplexType parseClass( String source, String className ) throws ParseError {
-		Map<String,SchemaObject> classes = ci.parse(source);
-		assertEquals( 1, classes.size() );
-		for( String k : classes.keySet() ) {
+		ci.parse(source, "(test source)");
+		assertEquals( 1, definedObjects.size() );
+		for( String k : definedObjects.keySet() ) {
 			assertEquals(className, k);
 		}
-		SchemaObject so = classes.get(className); 
+		SchemaObject so = definedObjects.get(className); 
 		assertTrue("Parsed object expected to be a complex type", so instanceof ComplexType);
 		// assertEquals( source, classes.get("some object").toString() );
 		return (ComplexType)so;

@@ -1,5 +1,8 @@
 package togos.schemaschema.parser;
 
+import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -26,6 +29,7 @@ import togos.schemaschema.parser.ast.Parameterized;
 import togos.schemaschema.parser.ast.Phrase;
 import togos.schemaschema.parser.asyncstream.BaseStreamSource;
 import togos.schemaschema.parser.asyncstream.StreamDestination;
+import togos.schemaschema.parser.asyncstream.StreamUtil;
 
 public class SchemaParser extends BaseStreamSource<SchemaObject> implements StreamDestination<Command>
 {
@@ -244,27 +248,29 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		_end();
 	}
 	
-	public Map<String,SchemaObject> parse( String source ) throws ParseError {
-		final Map<String,SchemaObject> types = new LinkedHashMap<String,SchemaObject>();
-		
+	//// Convenience methods for when you don't feel like setting
+	//// up your own tokenizers
+	
+	public void parse( Reader r, String sourceName ) throws IOException, ParseError {
 		Tokenizer t = new Tokenizer();
+		if( sourceName != null ) t.setSourceLocation( sourceName, 1, 1 );
 		Parser p = new Parser();
-		this.pipe(new StreamDestination<SchemaObject>() {
-			@Override public void data(SchemaObject t) {
-				types.put( t.getName(), t );
-			}
-			@Override public void end() { } 
-		});
 		p.pipe(this);
 		t.pipe(p);
 		try {
-			t.data( source.toCharArray() );
-			t.end();
+			StreamUtil.pipe( r, t );
 		} catch( ParseError e ) {
 			throw e;
 		} catch( Exception e ) {
 			throw new RuntimeException(e);
 		}
-		return types;
+	}
+	
+	public void parse( String source, String sourceName ) throws ParseError {
+		try {
+			parse( new StringReader(source), sourceName );
+		} catch( IOException e ) {
+			throw new RuntimeException(e);
+		}
 	}
 }
