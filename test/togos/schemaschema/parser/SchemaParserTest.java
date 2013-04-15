@@ -5,6 +5,7 @@ import java.util.Map;
 
 import junit.framework.TestCase;
 import togos.lang.ParseError;
+import togos.schemaschema.EnumType;
 import togos.schemaschema.FieldSpec;
 import togos.schemaschema.IndexSpec;
 import togos.schemaschema.ComplexType;
@@ -20,12 +21,12 @@ public class SchemaParserTest extends TestCase
 	SchemaParser ci;
 	Map<String,SchemaObject> definedObjects;
 	
-	public void setUp() {
+	public void setUp() throws Exception {
 		definedObjects = new HashMap<String,SchemaObject>();
 		
 		ci = new SchemaParser();
-		ci.defineFieldModifier("key", SchemaParser.IndexFieldModifierSpec.INSTANCE);
-		ci.defineFieldModifier("index", SchemaParser.IndexFieldModifierSpec.INSTANCE);
+		ci.defineFieldModifier("key", SchemaParser.FieldIndexModifierSpec.INSTANCE);
+		ci.defineFieldModifier("index", SchemaParser.FieldIndexModifierSpec.INSTANCE);
 		ci.defineType(Types.INTEGER);
 		ci.defineType(Types.STRING);
 		ci.pipe(new StreamDestination<SchemaObject>() {
@@ -107,5 +108,23 @@ public class SchemaParserTest extends TestCase
 		IndexSpec primaryIndex = ot.indexesByName.get("primary");
 		assertEquals( "primary", primaryIndex.name );
 		assertEquals( 2, primaryIndex.fields.size() );
+	}
+	
+	public void testParseEnum() throws ParseError {
+		String source =
+			"enum colorful color {\n" +
+			"\tyellow\n" +
+			"\tgreen\n" +
+			"\tred\n" +
+			"}";
+		
+		ComplexType ot = parseClass( source, "colorful color" );
+		assertTrue( ot instanceof EnumType );
+		EnumType et = (EnumType)ot;
+		assertEquals( 3, et.validValues.size() );
+		for( SchemaObject v : et.validValues ) {
+			assertTrue( PropertyUtil.hasType( v, et ) );
+			assertTrue( "red".equals(v.getName()) || "green".equals(v.getName()) || "yellow".equals(v.getName()) );
+		}
 	}
 }

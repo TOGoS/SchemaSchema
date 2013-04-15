@@ -1,6 +1,8 @@
 package togos.schemaschema;
 
+import java.util.Set;
+
 public interface Type extends SchemaObject
 {
-	public Type getParentType();
+	public Set<Type> getParentTypes();
 }

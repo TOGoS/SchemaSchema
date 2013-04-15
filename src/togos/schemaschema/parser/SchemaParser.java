@@ -5,12 +5,14 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
 import togos.lang.ParseError;
 import togos.lang.SourceLocation;
 import togos.schemaschema.ComplexType;
+import togos.schemaschema.EnumType;
 import togos.schemaschema.FieldSpec;
 import togos.schemaschema.ForeignKeySpec;
 import togos.schemaschema.IndexSpec;
@@ -37,7 +39,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	}
 	
 	interface ModifierSpec {
-		public Modifier bind( Parameterized[] params, SourceLocation sLoc ) throws ParseError;
+		public Modifier bind( SchemaParser sp, Parameterized[] params, SourceLocation sLoc ) throws ParseError;
 	}
 	
 	interface Modifier {
@@ -55,7 +57,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 			this.property = p;
 		}
 		
-		@Override public Modifier bind(Parameterized[] params, SourceLocation sLoc) throws ParseError {
+		@Override public Modifier bind(SchemaParser sp, Parameterized[] params, SourceLocation sLoc) throws ParseError {
 			final Object value;
 			if( params.length == 0 ) {
 				value = Boolean.TRUE;
@@ -85,7 +87,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		}
 		
 		@Override
-		public Modifier bind(Parameterized[] params, SourceLocation sLoc) throws ParseError {
+		public Modifier bind(SchemaParser sp, Parameterized[] params, SourceLocation sLoc) throws ParseError {
 			if( params.length > 0 ) {
 				throw new ParseError(name+" modifier takes no arguments", params[0].sLoc);
 			}
@@ -98,11 +100,11 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		}
 	}
 	
-	public static class IndexFieldModifierSpec implements ModifierSpec {
-		public static IndexFieldModifierSpec INSTANCE = new IndexFieldModifierSpec();
+	public static class FieldIndexModifierSpec implements ModifierSpec {
+		public static FieldIndexModifierSpec INSTANCE = new FieldIndexModifierSpec();
 		
 		@Override
-		public Modifier bind(Parameterized[] params, SourceLocation sLoc) throws ParseError {
+		public Modifier bind(SchemaParser sp, Parameterized[] params, SourceLocation sLoc) throws ParseError {
 			final ArrayList<String> indexNames = new ArrayList<String>();
 			
 			if( params.length == 0 ) {
@@ -136,6 +138,56 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		}
 	}
 	
+	/**
+	 * Used to specify an new (anonymous) enum type for a single field
+	 */
+	public static class EnumFieldModifierSpec implements ModifierSpec {
+		public static final EnumFieldModifierSpec INSTANCE = new EnumFieldModifierSpec(); 
+		
+		@Override
+		public Modifier bind(SchemaParser sp, Parameterized[] params, SourceLocation sLoc) throws ParseError {
+			final LinkedHashSet<String> valueNames = new LinkedHashSet<String>(); 
+			for( Parameterized p : params ) {
+				for( Parameterized pp : p.parameters ) {
+					throw new ParseError( "Enum values cannot themselves take parameters", pp.sLoc);
+				}
+			}
+			
+			return new Modifier() {
+				@Override public void apply(SchemaObject subject) {
+					EnumType er = new EnumType(subject.getName());
+					for( String valueName : valueNames ) er.addValue(valueName);
+					PropertyUtil.add( subject.getPropertyValues(), Properties.TYPE, er );
+				}
+			};
+		}
+		
+	}
+	
+	public static class ExtendsModifierSpec implements ModifierSpec {
+		public static ExtendsModifierSpec INSTANCE = new ExtendsModifierSpec();
+		
+		@Override
+		public Modifier bind( SchemaParser sp, Parameterized[] params, SourceLocation sLoc ) throws ParseError {
+			for( Parameterized p : params ) {
+				for( Parameterized pp : p.parameters ) {
+					throw new ParseError( "Parameterized types not yet supported", pp.sLoc );
+				}
+				String parentName = p.subject.unquotedText();
+				Type parent = sp.types.get( parentName );
+				if( parent == null ) {
+					throw new ParseError( "Parent type '"+parentName+"' is not defined", p.sLoc );
+				}
+			}
+			
+			return new Modifier() {
+				@Override public void apply(SchemaObject subject) {
+					
+				}
+			};
+		}
+	}
+	
 	////
 	
 	protected Map<String,Type> types = new HashMap<String,Type>();
@@ -148,21 +200,24 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	
 	public SchemaParser() { }
 	
-	public void defineType( Type t ) {
+	public void defineType( Type t ) throws Exception {
 		types.put( t.getName(), t );
 		HashMap<Property,Set<Object>> appliedProperties = new HashMap<Property,Set<Object>>();
 		PropertyUtil.add(appliedProperties, Properties.TYPE, t);
 		generalModifiers.put( t.getName(), new AliasModifier(Properties.TYPE.name, appliedProperties) );
+		_data( t );
 	}
 	
-	public void defineFieldProperty( Property property ) {
+	public void defineFieldProperty( Property property ) throws Exception {
 		fieldProperties.put( property.name, property );
 		fieldModifiers.put( property.name, new SimplePropertyModifierSpec(property) );
+		_data( property );
 	}
 	
-	public void defineClassProperty( Property property ) {
+	public void defineClassProperty( Property property ) throws Exception {
 		classProperties.put( property.name, property );
 		classModifiers.put( property.name, new SimplePropertyModifierSpec(property) );
+		_data( property );
 	}
 	
 	public void defineClassModifier( String name, ModifierSpec spec ) {
@@ -203,7 +258,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		for( Parameterized modifier : fieldCommand.modifiers ) {
 			ModifierSpec ms;
 			if( (ms = findFieldModifierSpec(modifier.subject)) != null ) {
-				Modifier m = ms.bind( modifier.parameters, modifier.sLoc );
+				Modifier m = ms.bind( this, modifier.parameters, modifier.sLoc );
 				if( m instanceof FieldModifier ) {
 					((FieldModifier)m).apply( objectType, fieldSpec );
 				} else {
@@ -241,10 +296,9 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	
 	private ModifierSpec parseFieldModifierSpec(final String name, Parameterized[] modifierModifiers, Block body) throws ParseError {
 		final ArrayList<Modifier> subModifiers = new ArrayList<Modifier>();
-		int cmdCount = body.commands == null ? 0 : body.commands.length;
-		if( cmdCount != 1 ) {
-			throw new ParseError("Field modifier must have exactly 1 command, "+cmdCount+" given",
-				cmdCount == 0 ? body.sLoc : body.commands[1].sLoc );
+		if( body.commands.length != 1 ) {
+			throw new ParseError("Field modifier must have exactly 1 command, "+body.commands.length+" given",
+				body.commands.length == 0 ? body.sLoc : body.commands[1].sLoc );
 		}
 		for( Command cmd : body.commands ) {
 			for( Parameterized p : cmd.modifiers ) {
@@ -256,7 +310,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		}
 		return new ModifierSpec() {
 			@Override
-			public Modifier bind(Parameterized[] params, SourceLocation sLoc) throws ParseError {
+			public Modifier bind(SchemaParser sp, Parameterized[] params, SourceLocation sLoc) throws ParseError {
 				if( params.length > 0 ) {
 					throw new ParseError("Custom field modifier "+name+" takes no parameters", sLoc);
 				}
@@ -314,7 +368,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 					}
 					referenceBody = fieldCommand.body;
 				} else if( (m = findClassModifierSpec(mod.subject)) != null ) {
-					_fieldModifiers.add(m.bind(mod.parameters, mod.sLoc));
+					_fieldModifiers.add(m.bind(this, mod.parameters, mod.sLoc));
 				}
 			}
 			
@@ -360,7 +414,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		
 		for( Parameterized mod : modifiers ) {
 			if( (m = findClassModifierSpec(mod.subject)) != null ) {
-				m.bind(mod.parameters, mod.sLoc).apply(t);
+				m.bind(this, mod.parameters, mod.sLoc).apply(t);
 			} else {
 				throw new ParseError("Unrecognised class modifier: '"+mod.subject+"'", mod.sLoc);
 			}
@@ -368,6 +422,33 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		
 		if( PropertyUtil.isTrue(t.getPropertyValues(), Properties.SELF_KEYED) ) {
 			t.indexesByName.put("primary", new IndexSpec("primary", t.fieldsByName.values()));
+		}
+		
+		return t;
+	}
+	
+	private EnumType parseEnum(String name, Parameterized[] modifiers, Block body) throws ParseError {
+		EnumType t = new EnumType(name);
+		
+		ModifierSpec m;
+		for( Parameterized mod : modifiers ) {
+			if( (m = findClassModifierSpec(mod.subject)) != null ) {
+				m.bind(this, mod.parameters, mod.sLoc).apply(t);
+			} else {
+				throw new ParseError("Unrecognised class modifier: '"+mod.subject+"'", mod.sLoc);
+			}
+		}
+		
+		for( Command c : body.commands ) {
+			ensureNoParameters(c.subject, "enum value");
+			for( Parameterized mod : c.modifiers ) {
+				throw new ParseError("Enum value modifiers are ignored", mod.sLoc);
+			}
+			if( c.body.commands.length > 0 ) {
+				throw new ParseError("Enum value body is ignored", c.body.sLoc);
+			}
+			
+			t.addValue(c.subject.subject.unquotedText());
 		}
 		
 		return t;
@@ -391,20 +472,21 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 			// TODO
 		} else if( cmd.startsWithWord("class") ) {
 			ensureNoParameters(value.subject, "class name");
-			ComplexType ot = parseClass( value.subject.subject.tail().unquotedText(), value.modifiers, value.body );
-			types.put( ot.name, ot );
-			_data( ot );
+			defineType( parseClass( value.subject.subject.tail().unquotedText(), value.modifiers, value.body ) );
+		} else if( cmd.startsWithWord("enum") ) {
+			ensureNoParameters(value.subject, "enum name");
+			defineType( parseEnum( value.subject.subject.tail().unquotedText(), value.modifiers, value.body ) );
 		} else {
 			throw new ParseError("Unrecognised command: '"+cmd+"'", value.sLoc);
 		}
 	}
-	
+
 	@Override public void end() throws Exception {
 		_end();
 	}
 	
 	//// Convenience methods for when you don't feel like setting
-	//// up your own tokenizers
+	//// up your own tokenizers and yaddah yaddah yaddah
 	
 	public void parse( Reader r, String sourceName ) throws IOException, ParseError {
 		Tokenizer t = new Tokenizer();

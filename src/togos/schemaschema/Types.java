@@ -12,9 +12,4 @@ public class Types
 	public static final Type STRING    = new SimpleType("string");
 	public static final Type REFERENCE = new SimpleType("reference");
 	public static final Type OBJECT    = new SimpleType("object");
-	
-	public static final Type getRootType( Type t ) {
-		for( Type parent; (parent = t.getParentType()) != null; t = parent );  
-		return t;
-	}
 }

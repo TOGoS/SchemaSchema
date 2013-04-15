@@ -18,9 +18,17 @@ public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 		this( name, new TreeMap<Property,Set<Object>>() );
 	}
 	
+	public BaseSchemaObject( String name, Type type ) {
+		this( name );
+		PropertyUtil.add( propertyValues, Properties.TYPE, type );
+	}
+	
 	@Override public String getName() { return name; }
 	@Override public Map<Property, Set<Object>> getPropertyValues() { return propertyValues; }
 	
+	public Set<Type> getParentTypes() {
+		return PropertyUtil.getAll( propertyValues, Properties.SUPER_TYPE, Type.class );
+	}
 	
 	@Override public boolean equals( Object oth ) {
 		return oth instanceof SchemaObject && name.equals(((SchemaObject)oth).getName());

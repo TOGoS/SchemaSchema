@@ -3,6 +3,8 @@ package togos.schemaschema;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import togos.schemaschema.parser.ast.Word;
+
 public class ComplexType extends BaseSchemaObject implements Type
 {
 	public final Map<String,FieldSpec> fieldsByName = new LinkedHashMap<String,FieldSpec>();
@@ -13,12 +15,9 @@ public class ComplexType extends BaseSchemaObject implements Type
 		super(name);
 	}
 	
-	@Override public Type getParentType() { return Types.OBJECT; }
-		
 	public String toString() {
-		return "class "+name+" {" + (fieldsByName.size() == 0 ?
-			" " :
-			"\n" + StringUtil.indent("\t", StringUtil.join("\n", fieldsByName.values())) + "\n"
-		) + "}";
+		return "class "+Word.quote(name)+ (fieldsByName.size() == 0 ? " " :
+			" {\n" + StringUtil.indent("\t", StringUtil.join("\n", fieldsByName.values())) + "\n}"
+		);
 	}
 }
