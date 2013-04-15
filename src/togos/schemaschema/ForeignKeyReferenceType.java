@@ -1,16 +1,15 @@
 package togos.schemaschema;
 
 
-class ForeignKeyReferenceType implements Type {
-	protected final String name;
+class ForeignKeyReferenceType extends BaseSchemaObject implements Type
+{
 	protected final Type parentType;
 	public final ForeignKeySpec keySpec;
 	
-	@Override public String getName() { return name; }
 	@Override public Type getParentType() { return parentType; }
 	
 	public ForeignKeyReferenceType( String name, Type parentType, ForeignKeySpec keySpec ) {
-		this.name = name;
+		super(name);
 		this.parentType = parentType;
 		this.keySpec = keySpec;
 	}

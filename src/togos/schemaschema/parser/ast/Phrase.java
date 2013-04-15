@@ -44,9 +44,21 @@ public class Phrase extends ASTNode
 		return (words.length > 0 && words[0].text.equals(word));
 	}
 	
+	public boolean startsWithWords( String... w ) {
+		if( words.length < w.length ) return false;
+		for( int i=0; i<w.length; ++i ) {
+			if( !words[i].text.equals(w[i]) ) return false;
+		}
+		return true;
+	}
+	
 	public Phrase tail() {
-		if( words.length <= 1 ) return EMPTY;
-		return new Phrase( Arrays.copyOfRange(words, 1, words.length));
+		return tail(1);
+	}
+	
+	public Phrase tail( int skip ) {
+		if( words.length <= skip ) return EMPTY;
+		return new Phrase( Arrays.copyOfRange(words, skip, words.length));
 	}
 	
 	public String unquotedText() {

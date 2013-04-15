@@ -6,14 +6,15 @@ import junit.framework.TestCase;
 import togos.lang.ParseError;
 import togos.schemaschema.FieldSpec;
 import togos.schemaschema.IndexSpec;
-import togos.schemaschema.ObjectType;
+import togos.schemaschema.ComplexType;
+import togos.schemaschema.SchemaObject;
 import togos.schemaschema.Types;
 
 public class SchemaParserTest extends TestCase
 {
-	SchemaParser<ObjectType> ci;
+	SchemaParser ci;
 	public void setUp() {
-		ci = new SchemaParser<ObjectType>();
+		ci = new SchemaParser();
 		ci.types.put("integer", Types.INTEGER);
 		ci.types.put("string", Types.STRING);
 	}
@@ -24,14 +25,16 @@ public class SchemaParserTest extends TestCase
 		}
 	}
 	
-	protected ObjectType parseClass( String source, String className ) throws ParseError {
-		Map<String,ObjectType> classes = ci.parse(source);
+	protected ComplexType parseClass( String source, String className ) throws ParseError {
+		Map<String,SchemaObject> classes = ci.parse(source);
 		assertEquals( 1, classes.size() );
 		for( String k : classes.keySet() ) {
 			assertEquals(className, k);
 		}
+		SchemaObject so = classes.get(className); 
+		assertTrue("Parsed object expected to be a complex type", so instanceof ComplexType);
 		// assertEquals( source, classes.get("some object").toString() );
-		return classes.get(className);
+		return (ComplexType)so;
 	}
 	
 	public void testSimpleClass() throws ParseError {
@@ -41,7 +44,7 @@ public class SchemaParserTest extends TestCase
 			"\tstr field : string\n" +
 			"}";
 		
-		ObjectType ot = parseClass( source, "some object" );
+		ComplexType ot = parseClass( source, "some object" );
 		assertEquals( source, ot.toString() );
 		assertEquals( 2, ot.fieldsByName.size() );
 		assertFieldsNamedProperly( ot.fieldsByName );
@@ -70,7 +73,7 @@ public class SchemaParserTest extends TestCase
 			"\tstr field : string : primary key component\n" +
 			"}";
 		
-		ObjectType ot = parseClass( source, "some object" );
+		ComplexType ot = parseClass( source, "some object" );
 		
 		assertEquals( 1, ot.indexesByName.size() );
 		assertTrue( ot.indexesByName.containsKey("primary") );

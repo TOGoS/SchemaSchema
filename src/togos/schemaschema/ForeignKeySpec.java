@@ -17,10 +17,10 @@ public class ForeignKeySpec
 		public String toString() { return targetField + " = " + localField; }
 	}
 	
-	final ObjectType target;
+	final ComplexType target;
 	final Collection<Component> components;
 	
-	ForeignKeySpec( ObjectType target, Collection<Component> components ) {
+	ForeignKeySpec( ComplexType target, Collection<Component> components ) {
 		this.target = target;
 		this.components = Collections.unmodifiableCollection(components);
 	}

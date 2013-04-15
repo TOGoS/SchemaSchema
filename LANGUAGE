@@ -62,7 +62,7 @@ Define custom value types
 	
 	type 'garf' = integer  # Alias to another type
 	
-	type 'moof' : extends quux {
+	type 'moof' : extends @ quux {
 		# composite type
 		coolness : integer
 		title : string

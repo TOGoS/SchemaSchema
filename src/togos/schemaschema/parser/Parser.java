@@ -365,6 +365,9 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 		parseState = parseState.end();
 	}	
 	
+	/**
+	 * Convenience method for parsing a single class from a string.
+	 */
 	public static ASTNode parseCommand( String commandSource, SourceLocation sLoc ) throws Exception {
 		Tokenizer t = new Tokenizer();
 		t.setSourceLocation( sLoc );

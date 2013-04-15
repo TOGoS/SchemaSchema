@@ -1,13 +1,11 @@
 package togos.schemaschema;
 
-public class SimpleType implements Type
+public class SimpleType extends BaseSchemaObject implements Type
 {
-	protected final String name, longName;
 	protected final Type parent;
 	
 	public SimpleType( String name, Type parent ) {
-		this.name = name;
-		this.longName = "schemaschema:"+name;
+		super(name);
 		this.parent = parent;
 	}
 	

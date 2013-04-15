@@ -1,32 +1,32 @@
 package togos.schemaschema;
 
-import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 
-public class ObjectType implements Type
+public class ComplexType extends BaseSchemaObject implements Type
 {
-	public final String name;
 	public final Type parentType;
 	public final Map<String,FieldSpec> fieldsByName;
 	public final Map<String,IndexSpec> indexesByName;
 	public final Map<String,ForeignKeySpec> foreignKeysByName;
 	
-	public ObjectType(
+	public ComplexType(
 		String name, Type parentType,
 		Map<String,FieldSpec> fields,
 		Map<String,IndexSpec> indexes,
-		Map<String,ForeignKeySpec> foreignKeys
+		Map<String,ForeignKeySpec> foreignKeys,
+		Map<Property,Set<Object>> propertyValues
 	) {
-		this.name = name;
+		super( name, propertyValues );
 		this.parentType = parentType;
-		this.fieldsByName = Collections.unmodifiableMap(fields);
-		this.indexesByName = Collections.unmodifiableMap(indexes);
-		this.foreignKeysByName = Collections.unmodifiableMap(foreignKeys);
+		this.fieldsByName = fields;
+		this.indexesByName = indexes;
+		this.foreignKeysByName = foreignKeys;
 	}
 	
 	@Override public String getName() { return name; }
 	@Override public Type getParentType() { return Types.OBJECT; }
-	
+		
 	public String toString() {
 		return "class "+name+" {\n" + StringUtil.indent("\t", StringUtil.join("\n", fieldsByName.values())) + "\n}";
 	}

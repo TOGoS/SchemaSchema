@@ -1,7 +1,6 @@
 package togos.schemaschema;
 
-public interface Type
+public interface Type extends SchemaObject
 {
-	public String getName();
 	public Type getParentType();
 }
