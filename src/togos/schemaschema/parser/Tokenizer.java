@@ -71,7 +71,7 @@ public class Tokenizer extends BaseStreamSource<Token> implements StreamDestinat
 	
 	protected static boolean isSymbol( char c ) {
 		switch( c ) {
-		case '[': case ']': case '(': case ')': case '{': case '}': case ',': case ';': case ':': case '=': case '\n':
+		case '[': case ']': case '(': case ')': case '{': case '}': case ',': case ';': case ':': case '=': case '@': case '\n':
 			return true;
 		default:
 			return false;

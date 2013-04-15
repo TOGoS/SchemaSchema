@@ -5,8 +5,12 @@ import junit.framework.TestCase;
 
 public class ParserTest extends TestCase
 {
+	public void testParse( String expectedOutput, String input ) throws Exception {
+		assertEquals( expectedOutput, Parser.parseCommand( input, BaseSourceLocation.NONE ).toString() );
+	}
+	
 	public void testParse( String source ) throws Exception {
-		assertEquals( source, Parser.parseCommand( source, BaseSourceLocation.NONE ).toString() );
+		testParse( source, source );
 	}
 
 	public void testSimpleCommand() throws Exception {
@@ -28,6 +32,21 @@ public class ParserTest extends TestCase
 			"class x y z {\n" +
 			"\tfoo : string(4)\n" +
 			"\tbar : integer(0, 9999)\n" +
+			"}"
+		);
+	}
+	
+	public void testAtModifiers() throws Exception {
+		testParse(
+			"class x y z : foo(bar) {\n" +
+			"\tfoo : string(4)\n" +
+			"\tbar : integer(0, 9999)\n" +
+			"\tsome cool thing : x(y(z(a, b)))\n" +
+			"}",
+			"class x y z : foo @ bar {\n" +
+			"\tfoo : string @ 4\n" +
+			"\tbar : integer(0, 9999)\n" +
+			"\tsome cool thing : x @ y @ z(a,b)\n" +
 			"}"
 		);
 	}

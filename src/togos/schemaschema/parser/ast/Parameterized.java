@@ -4,6 +4,8 @@ import togos.lang.SourceLocation;
 
 public class Parameterized extends ASTNode
 {
+	public static final Parameterized[] EMPTY_PARAMETER_LIST = new Parameterized[0];
+	
 	public final Phrase subject;
 	public final Parameterized[] parameters;
 	
@@ -11,6 +13,10 @@ public class Parameterized extends ASTNode
 		super(loc);
 		this.subject = subject;
 		this.parameters = parameters;
+	}
+	
+	public Parameterized( Phrase subject, SourceLocation loc ) {
+		this( subject, EMPTY_PARAMETER_LIST, loc );
 	}
 	
 	public String toString() {

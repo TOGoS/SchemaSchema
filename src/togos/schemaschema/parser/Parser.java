@@ -104,7 +104,7 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 	}
 	
 	static class ParameterizedParseState implements ParseState, PhraseListParseState, ParameterizedListParseState {
-		enum State { NEW, SUBJECT, PARAMS, DONE }
+		enum State { NEW, SUBJECT, PARAMS, AT_PARAM, DONE }
 		protected final ParameterizedListParseState parent;
 		State state = State.NEW;
 		Phrase subject = null;
@@ -135,11 +135,21 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 					if( "(".equals(t.text) ) {
 						state = State.PARAMS;
 						return new ParameterizedParseState(this);
+					} else if( "@".equals(t.text ) ) {
+						state = State.AT_PARAM;
+						return new ParameterizedParseState(this);
 					} else {
 						return parent.parameterized( toParameterized() ).token(t);
 					}
 				}
 				throw unexpectedTokenError(t);
+			case AT_PARAM:
+				switch( t.type ) {
+				case SYMBOL:
+					return parent.parameterized( toParameterized() ).token(t);
+				default:
+					return new PhraseParseState( this ).token(t);
+				}
 			case PARAMS:
 				switch( t.type ) {
 				case SYMBOL:
@@ -154,22 +164,34 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 			default:
 				throw new UnexpectedStateException(state);
 			}
-			
 		}
 		
 		@Override public ParseState phrase( Phrase phrase ) throws Exception {
-			if( this.state != State.SUBJECT ) throw new UnexpectedStateException(state);
-			if( this.subject != null ) {
-				throw new RuntimeException("Parameterized already has a subject");
+			switch( state ) {
+			case SUBJECT:
+				if( this.subject != null ) {
+					throw new RuntimeException("Parameterized already has a subject");
+				}
+				this.subject = phrase;
+				return this;
 			}
-			this.subject = phrase;
-			return this;
+			throw new UnexpectedStateException(state);
 		}
 		
 		@Override public ParseState parameterized( Parameterized param ) throws Exception {
-			if( state != State.PARAMS ) throw new UnexpectedStateException(state);
-			this.parameters.add( param );
-			return this;
+			switch( state ) {
+			case PARAMS:
+				this.parameters.add( param );
+				return this;
+			case AT_PARAM:
+				if( this.parameters.size() > 0 ) {
+					throw new RuntimeException("Parameterized already has arguments");
+				}
+				this.parameters.add( param );
+				this.state = State.DONE;
+				return parent.parameterized( toParameterized() );
+			}
+			throw new UnexpectedStateException(state);
 		}
 		
 		@Override public ParseState end() throws Exception {
