@@ -92,6 +92,7 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 		
 		@Override public ParseState token( Token t ) throws Exception {
 			if( firstSLoc == BaseSourceLocation.NONE ) firstSLoc = t;
+			
 			switch( t.type ) {
 			case SYMBOL:
 				return parent.phrase( toPhrase() ).token(t);
@@ -122,6 +123,8 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 		}
 		
 		@Override public ParseState token(Token t) throws Exception {
+			if( firstSLoc == BaseSourceLocation.NONE ) firstSLoc = t;
+			
 			switch( state ) {
 			case NEW:
 				state = State.SUBJECT;
