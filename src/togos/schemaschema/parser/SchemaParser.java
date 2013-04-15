@@ -196,7 +196,9 @@ public class SchemaParser<V extends ObjectType> extends BaseStreamSource<V> impl
 			for( Parameterized classNameParameter : value.subject.parameters ) {
 				throw new ParseError("Class name cannot have parameters", classNameParameter.sLoc );
 			}
-			_data( process(parseClass( value.subject.subject.tail().unquotedText(), value.modifiers, value.body )) );
+			V ot = process(parseClass( value.subject.subject.tail().unquotedText(), value.modifiers, value.body ));
+			types.put( ot.name, ot );
+			_data( ot );
 		} else {
 			throw new ParseError("Unrecognised command: '"+cmd+"'", value.sLoc);
 		}
