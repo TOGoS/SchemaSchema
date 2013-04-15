@@ -331,7 +331,11 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 		@Override public ParseState token(Token t) throws Exception {
 			switch( t.type ) {
 			case SYMBOL:
-				throw unexpectedTokenError(t);
+				if( "\n".equals(t.text) ) {
+					return this;
+				} else {
+					throw unexpectedTokenError(t);
+				}
 			default:
 				return new CommandParseState( this ).token( t );
 			}
