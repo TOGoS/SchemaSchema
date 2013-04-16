@@ -136,7 +136,7 @@ public class SchemaParserTest extends TestCase
 			"\n" +
 			"class property X : X\n" +
 			"\n" +
-			"class Y : X @ foo";
+			"class Y : X @ foo\n";
 		
 		sp.parse(source, "(test script)");
 		
@@ -145,9 +145,10 @@ public class SchemaParserTest extends TestCase
 		Predicate predX = sp.predicates.get("X");
 		assertNotNull(predX);
 		
-		ComplexType ot = parseClass( source, "Y" );
-		assertEquals( 1, PropertyUtil.getAll(ot.getProperties(), predX).size() );
-		for( Object v : PropertyUtil.getAll(ot.getProperties(), predX) ) {
+		ComplexType yClass = parseClass( source, "Y" );
+		assertNotNull( yClass );
+		assertEquals( 1, PropertyUtil.getAll(yClass.getProperties(), predX).size() );
+		for( Object v : PropertyUtil.getAll(yClass.getProperties(), predX) ) {
 			assertTrue( PropertyUtil.isMemberOf((SchemaObject)v, enumX) );
 		}
 	}

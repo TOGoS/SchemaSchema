@@ -36,9 +36,6 @@ public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 		return PropertyUtil.getAll( properties, Predicates.EXTENDS, Type.class );
 	}
 	
-	@Override public boolean equals( Object oth ) {
-		return oth instanceof SchemaObject && name.equals(((SchemaObject)oth).getName());
-	}
 	@Override public int compareTo(SchemaObject o) {
 		return name.compareTo(o.getName());
 	}

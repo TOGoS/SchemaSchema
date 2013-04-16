@@ -27,8 +27,7 @@ public class Predicate extends BaseSchemaObject
 		return PropertyUtil.getAll(properties, Predicates.OBJECTS_ARE_MEMBERS_OF, Type.class);
 	}
 	
-	@Override
-	public String toString() {
+	@Override public String toString() {
 		return "predicate "+Word.quote(name);
 	}
 }
