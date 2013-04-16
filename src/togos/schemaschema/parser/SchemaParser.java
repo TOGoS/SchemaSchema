@@ -169,6 +169,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		
 		@Override
 		public Modifier bind( SchemaParser sp, Parameterized[] params, SourceLocation sLoc ) throws ParseError {
+			final Set<Type> parentTypes = new LinkedHashSet<Type>();
 			for( Parameterized p : params ) {
 				for( Parameterized pp : p.parameters ) {
 					throw new ParseError( "Parameterized types not yet supported", pp.sLoc );
@@ -178,11 +179,12 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 				if( parent == null ) {
 					throw new ParseError( "Parent type '"+parentName+"' is not defined", p.sLoc );
 				}
+				parentTypes.add(parent);
 			}
 			
 			return new Modifier() {
 				@Override public void apply(SchemaObject subject) {
-					
+					PropertyUtil.addAll(subject.getPropertyValues(), Properties.SUPER_TYPE, parentTypes); 
 				}
 			};
 		}

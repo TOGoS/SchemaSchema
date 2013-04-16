@@ -29,6 +29,7 @@ public class SchemaParserTest extends TestCase
 		ci.defineFieldModifier("index", SchemaParser.FieldIndexModifierSpec.INSTANCE);
 		ci.defineType(Types.INTEGER);
 		ci.defineType(Types.STRING);
+		ci.defineClassModifier("extends", SchemaParser.ExtendsModifierSpec.INSTANCE );
 		ci.pipe(new StreamDestination<SchemaObject>() {
 			@Override public void data(SchemaObject value) throws Exception {
 				definedObjects.put( value.getName(), value );
@@ -67,7 +68,7 @@ public class SchemaParserTest extends TestCase
 	
 	public void testSimpleClass() throws ParseError {
 		String source =
-			"class some object {\n" +
+			"class 'some object' {\n" +
 			"\tint field : integer\n" +
 			"\tstr field : string\n" +
 			"}";
@@ -94,9 +95,19 @@ public class SchemaParserTest extends TestCase
 		}
 	}
 	
+	public void testExtendedClass() throws ParseError {
+		String source =
+			"class 'some object' : extends(integer) {\n" +
+			"\tnumber of bits : integer\n" +
+			"}";
+			
+		ComplexType ot = parseClass( source, "some object" );
+		assertEquals( source, ot.toString() );
+	}
+	
 	public void testClassWithPrimaryKey() throws ParseError {
 		String source =
-			"class some object {\n" +
+			"class 'some object' {\n" +
 			"\tint field : integer : key(primary)\n" +
 			"\tstr field : string : key(primary)\n" +
 			"}";

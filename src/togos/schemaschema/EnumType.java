@@ -22,11 +22,14 @@ public class EnumType extends ComplexType
 	}
 	
 	public String toString() {
-		String s = "enum "+Word.quote(name)+" {\n";
-		for( SchemaObject v : validValues ) {
-			s += "\t" + v.getName()+"\n";
+		String s = "enum "+Word.quote(name);
+		if( validValues.size() > 0 ) {
+			s += " {\n";
+			for( SchemaObject v : validValues ) {
+				s += "\t" + v.getName()+"\n";
+			}
+			s += "}";
 		}
-		s += "\n}";
 		return s;
 	}
 }

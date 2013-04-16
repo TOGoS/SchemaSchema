@@ -1,5 +1,6 @@
 package togos.schemaschema;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -8,8 +9,16 @@ import java.util.TreeSet;
 
 public class PropertyUtil
 {
-	public static void addAll( Map<Property,Set<Object>> dest, Map<Property,Set<Object>> source ) {
-		for( Map.Entry<Property,Set<Object>> e : source.entrySet() ) {
+	public static void addAll( Map<Property,Set<Object>> dest, Property key, Collection<?> values ) {
+		if( values.size() == 0 ) return;
+		
+		Set<Object> vs = dest.get(key);
+		if( vs == null ) dest.put(key, vs = new TreeSet<Object>() );
+		vs.addAll( values );
+	}
+	
+	public static void addAll( Map<Property,Set<Object>> dest, Map<? extends Property,? extends Set<? extends Object>> source ) {
+		for( Map.Entry<? extends Property,? extends Set<? extends Object>> e : source.entrySet() ) {
 			Set<Object> vs = dest.get(e.getKey());
 			if( vs == null ) dest.put(e.getKey(), vs = new TreeSet<Object>() );
 			vs.addAll( e.getValue() );
@@ -40,7 +49,7 @@ public class PropertyUtil
 	}
 
 	public static <T> Set<T> getAll(Map<Property, Set<Object>> propertyValues, Property key, Class<T> klass ) {
-		Set<Object> values = propertyValues.get( propertyValues );
+		Set<Object> values = propertyValues.get( key );
 		if( values == null || values.size() == 0 ) return Collections.emptySet();
 		
 		LinkedHashSet<T> valuesOfTheDesiredType = new LinkedHashSet<T>();

@@ -2,7 +2,9 @@ package togos.schemaschema;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 
+import togos.schemaschema.parser.ast.Phrase;
 import togos.schemaschema.parser.ast.Word;
 
 public class ComplexType extends BaseSchemaObject implements Type
@@ -16,7 +18,17 @@ public class ComplexType extends BaseSchemaObject implements Type
 	}
 	
 	public String toString() {
-		return "class "+Word.quote(name)+ (fieldsByName.size() == 0 ? " " :
+		String extendStr = "";
+		Set<Type> parentTypes = getParentTypes();
+		if( parentTypes.size() > 0 ) {
+			for( Type t : parentTypes ) {
+				extendStr += extendStr.length() == 0 ? " : extends(" : ", ";
+				extendStr += Phrase.quoteIfNecessary(t.getName());
+			}
+			extendStr += ")";
+		}
+		
+		return "class "+Word.quote(name) + extendStr + (fieldsByName.size() == 0 ? " " :
 			" {\n" + StringUtil.indent("\t", StringUtil.join("\n", fieldsByName.values())) + "\n}"
 		);
 	}
