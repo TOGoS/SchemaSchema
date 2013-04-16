@@ -12,13 +12,17 @@ public class EnumType extends ComplexType
 	public EnumType( String name ) {
 		super(name);
 	}
-
-	public void addValue(BaseSchemaObject v) {
+	
+	public Set<SchemaObject> getValidValues() {
+		return validValues;
+	}
+	
+	public void addValidValue(BaseSchemaObject v) {
 		validValues.add( v );
 	}
 	
-	public void addValue(String name) {
-		addValue( new BaseSchemaObject(name, this) );
+	public void addValidValue(String name) {
+		addValidValue( new BaseSchemaObject(name, this) );
 	}
 	
 	public String toString() {

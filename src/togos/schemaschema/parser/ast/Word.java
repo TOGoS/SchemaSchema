@@ -1,10 +1,14 @@
 package togos.schemaschema.parser.ast;
 
 import togos.lang.SourceLocation;
+import togos.schemaschema.parser.Token;
 import togos.schemaschema.parser.Tokenizer;
 
 public class Word extends ASTNode
 {
+	/**
+	 * Single-quotes a string.
+	 */
 	public static String quote( char[] text ) {
 		char[] escaped = new char[text.length*2+2];
 		int j = 0;
@@ -43,6 +47,9 @@ public class Word extends ASTNode
 		return quote( text.toCharArray() );
 	}
 	
+	/**
+	 * Single quotes the given string if it contains any non-word characters.
+	 */
 	public static String quoteIfNecessary( String text ) {
 		for( char c : text.toCharArray() ) {
 			if( !Tokenizer.isWordChar(c) ) {
@@ -53,10 +60,12 @@ public class Word extends ASTNode
 	}
 	
 	public final String text;
+	public final Token.Type quoting;	
 	
-	public Word( String text, SourceLocation loc ) {
+	public Word( String text, Token.Type quoting, SourceLocation loc ) {
 		super(loc);
 		this.text = text;
+		this.quoting = quoting;
 	}
 	
 	public String toString() {

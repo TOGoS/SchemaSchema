@@ -25,9 +25,9 @@ public class FieldSpec extends BaseSchemaObject
 	
 	public String toString() {
 		String s = Phrase.quoteIfNecessary(name);
-		for( Map.Entry<Property,Set<Object>> e : propertyValues.entrySet() ) {
+		for( Map.Entry<Predicate,Set<Object>> e : properties.entrySet() ) {
 			for( Object v : e.getValue() ) {
-				if( e.getKey() == Properties.TYPE || v == Boolean.TRUE ) {
+				if( e.getKey() == Predicates.OBJECTS_ARE_MEMBERS_OF || v == Boolean.TRUE ) {
 					s += " : " + toString(v);
 				} else {
 					s += " : " + e.getKey().getName() + " @ " + toString(v);

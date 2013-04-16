@@ -9,7 +9,9 @@ import java.util.TreeSet;
 
 public class PropertyUtil
 {
-	public static void addAll( Map<Property,Set<Object>> dest, Property key, Collection<?> values ) {
+	//// Modify proprety lists
+	
+	public static void addAll( Map<Predicate,Set<Object>> dest, Predicate key, Collection<?> values ) {
 		if( values.size() == 0 ) return;
 		
 		Set<Object> vs = dest.get(key);
@@ -17,39 +19,47 @@ public class PropertyUtil
 		vs.addAll( values );
 	}
 	
-	public static void addAll( Map<Property,Set<Object>> dest, Map<? extends Property,? extends Set<? extends Object>> source ) {
-		for( Map.Entry<? extends Property,? extends Set<? extends Object>> e : source.entrySet() ) {
+	public static void addAll( Map<Predicate,Set<Object>> dest, Map<? extends Predicate,? extends Set<? extends Object>> source ) {
+		for( Map.Entry<? extends Predicate,? extends Set<? extends Object>> e : source.entrySet() ) {
 			Set<Object> vs = dest.get(e.getKey());
 			if( vs == null ) dest.put(e.getKey(), vs = new TreeSet<Object>() );
 			vs.addAll( e.getValue() );
 		}
 	}
 	
-	public static void add( Map<Property,Set<Object>> dest, Property key, Object value ) {
+	public static void add( Map<Predicate,Set<Object>> dest, Predicate key, Object value ) {
 		Set<Object> vs = dest.get(key);
 		if( vs == null ) dest.put(key, vs = new TreeSet<Object>() );
 		vs.add( value );
 	}
+	
+	//// Query proprety lists
 
-	public static boolean hasValue( Map<Property,Set<Object>> propertyValues, Property key, Object value ) {
-		Set<Object> vs = propertyValues.get(key);
+	public static boolean hasValue( Map<Predicate,? extends Set<?>> properties, Predicate key, Object value ) {
+		Set<?> vs = properties.get(key);
 		return vs != null && vs.contains(value);
 	}
 	
-	public static boolean isTrue( Map<Property,Set<Object>> propertyValues, Property key ) {
-		return hasValue( propertyValues, key, Boolean.TRUE );
+	public static boolean isTrue( Map<Predicate,? extends Set<?>> properties, Predicate key ) {
+		return hasValue( properties, key, Boolean.TRUE );
 	}
 	
-	public static boolean hasType( SchemaObject obj, Type t ) {
-		if( hasValue( obj.getPropertyValues(), Properties.TYPE, t ) ) return true;
-		for( Type pt : t.getParentTypes() ) {
-			if( hasType( obj, pt ) ) return true;
+	public static boolean isMemberOf( SchemaObject obj, Type t ) {
+		if( hasValue( obj.getProperties(), Predicates.IS_MEMBER_OF, t ) ) return true;
+		for( Type pt : t.getExtendedTypes() ) {
+			if( isMemberOf( obj, pt ) ) return true;
 		}
 		return false;
 	}
-
-	public static <T> Set<T> getAll(Map<Property, Set<Object>> propertyValues, Property key, Class<T> klass ) {
-		Set<Object> values = propertyValues.get( key );
+	
+	public static Set<?> getAll(Map<Predicate, ? extends Set<?>> properties, Predicate key ) {
+		Set<?> values = properties.get( key );
+		if( values == null || values.size() == 0 ) return Collections.emptySet();
+		return values;
+	}
+	
+	public static <T> Set<T> getAll(Map<Predicate, ? extends Set<?>> properties, Predicate key, Class<T> klass ) {
+		Set<?> values = properties.get( key );
 		if( values == null || values.size() == 0 ) return Collections.emptySet();
 		
 		LinkedHashSet<T> valuesOfTheDesiredType = new LinkedHashSet<T>();

@@ -7,27 +7,33 @@ import java.util.TreeMap;
 public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 {
 	public final String name;
-	public final Map<Property,Set<Object>> propertyValues;
+	public String longName;
+	public final Map<Predicate,Set<Object>> properties = new TreeMap<Predicate,Set<Object>>();
 	
-	public BaseSchemaObject( String name, Map<Property,Set<Object>> propertyValues ) {
+	public BaseSchemaObject( String name, String longName ) {
 		this.name = name;
-		this.propertyValues = propertyValues;
+		this.longName = longName;
 	}
 		
 	public BaseSchemaObject( String name ) {
-		this( name, new TreeMap<Property,Set<Object>>() );
+		this( name, (String)null );
 	}
 	
 	public BaseSchemaObject( String name, Type type ) {
 		this( name );
-		PropertyUtil.add( propertyValues, Properties.TYPE, type );
+		PropertyUtil.add( properties, Predicates.IS_MEMBER_OF, type );
 	}
 	
 	@Override public String getName() { return name; }
-	@Override public Map<Property, Set<Object>> getPropertyValues() { return propertyValues; }
+	@Override public String getLongName() { return longName; }
+	@Override public Map<Predicate, Set<Object>> getProperties() { return properties; }
 	
-	public Set<Type> getParentTypes() {
-		return PropertyUtil.getAll( propertyValues, Properties.SUPER_TYPE, Type.class );
+	/**
+	 * Used by Type objects to implement the Type interface
+	 * Not intended to be useful by non-Type objects.
+	 **/
+	public Set<Type> getExtendedTypes() {
+		return PropertyUtil.getAll( properties, Predicates.EXTENDS, Type.class );
 	}
 	
 	@Override public boolean equals( Object oth ) {

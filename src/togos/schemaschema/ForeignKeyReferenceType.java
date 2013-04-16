@@ -15,7 +15,7 @@ class ForeignKeyReferenceType extends BaseSchemaObject implements Type
 	}
 
 	@Override
-	public Set<Type> getParentTypes() {
+	public Set<Type> getExtendedTypes() {
 		// TODO Auto-generated method stub
 		return null;
 	}

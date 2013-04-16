@@ -19,7 +19,7 @@ public class ComplexType extends BaseSchemaObject implements Type
 	
 	public String toString() {
 		String extendStr = "";
-		Set<Type> parentTypes = getParentTypes();
+		Set<Type> parentTypes = getExtendedTypes();
 		if( parentTypes.size() > 0 ) {
 			for( Type t : parentTypes ) {
 				extendStr += extendStr.length() == 0 ? " : extends(" : ", ";

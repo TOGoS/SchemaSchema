@@ -5,5 +5,6 @@ import java.util.Set;
 
 public interface SchemaObject {
 	public String getName();
-	public Map<Property,Set<Object>> getPropertyValues();
+	public String getLongName();
+	public Map<Predicate,Set<Object>> getProperties();
 }

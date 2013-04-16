@@ -97,7 +97,7 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 			case SYMBOL:
 				return parent.phrase( toPhrase() ).token(t);
 			default:
-				words.add( new Word(t.text, t) );
+				words.add( new Word(t.text, t.type, t) );
 				return this;
 			}
 		}
