@@ -5,7 +5,6 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 
 public class PropertyUtil
 {
@@ -15,26 +14,31 @@ public class PropertyUtil
 		if( values.size() == 0 ) return;
 		
 		Set<Object> vs = dest.get(key);
-		if( vs == null ) dest.put(key, vs = new TreeSet<Object>() );
+		if( vs == null ) dest.put(key, vs = new LinkedHashSet<Object>() );
 		vs.addAll( values );
 	}
 	
 	public static void addAll( Map<Predicate,Set<Object>> dest, Map<? extends Predicate,? extends Set<? extends Object>> source ) {
 		for( Map.Entry<? extends Predicate,? extends Set<? extends Object>> e : source.entrySet() ) {
 			Set<Object> vs = dest.get(e.getKey());
-			if( vs == null ) dest.put(e.getKey(), vs = new TreeSet<Object>() );
+			if( vs == null ) dest.put(e.getKey(), vs = new LinkedHashSet<Object>() );
 			vs.addAll( e.getValue() );
 		}
 	}
 	
 	public static void add( Map<Predicate,Set<Object>> dest, Predicate key, Object value ) {
 		Set<Object> vs = dest.get(key);
-		if( vs == null ) dest.put(key, vs = new TreeSet<Object>() );
+		if( vs == null ) dest.put(key, vs = new LinkedHashSet<Object>() );
 		vs.add( value );
 	}
 	
 	//// Query proprety lists
 
+	public static boolean hasValue( Map<Predicate,? extends Set<?>> properties, Predicate key ) {
+		Set<?> vs = properties.get(key);
+		return vs != null && vs.size() > 0;
+	}
+	
 	public static boolean hasValue( Map<Predicate,? extends Set<?>> properties, Predicate key, Object value ) {
 		Set<?> vs = properties.get(key);
 		return vs != null && vs.contains(value);
@@ -69,5 +73,25 @@ public class PropertyUtil
 			}
 		}
 		return valuesOfTheDesiredType;
+	}
+
+	public static String objectToString(Object o) {
+		if( o instanceof SchemaObject && ((SchemaObject)o).getName() != null ) {
+			return ((SchemaObject)o).getName();
+		} else if( o == Boolean.TRUE ) {
+			return "true";
+		} else if( o == Boolean.FALSE ) {
+			return "false";
+		} else {
+			return o.toString();
+		}
+	}
+	
+	public static String pairToString(Predicate key, Object v) {
+		if( v == Boolean.TRUE ) {
+			return key.getName();
+		} else {
+			return key + " @ " + objectToString(v);
+		}
 	}
 }

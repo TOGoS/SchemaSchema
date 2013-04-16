@@ -11,10 +11,14 @@ public class Predicate extends BaseSchemaObject
 	}
 
 	public Predicate(String name, String longName) {
-		super(name);
-		
+		super(name, longName);
 	}
 
+	public Predicate(String name, String longName, Type objectType) {
+		super(name, longName);
+		this.addObjectType(objectType);
+	}
+	
 	public void addObjectType(Type t) {
 		PropertyUtil.add(properties, Predicates.OBJECTS_ARE_MEMBERS_OF, t);
 	}

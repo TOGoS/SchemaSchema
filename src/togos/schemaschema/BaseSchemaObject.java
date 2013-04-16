@@ -1,14 +1,14 @@
 package togos.schemaschema;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 
 public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 {
 	public final String name;
 	public String longName;
-	public final Map<Predicate,Set<Object>> properties = new TreeMap<Predicate,Set<Object>>();
+	public final Map<Predicate,Set<Object>> properties = new LinkedHashMap<Predicate,Set<Object>>();
 	
 	public BaseSchemaObject( String name, String longName ) {
 		this.name = name;

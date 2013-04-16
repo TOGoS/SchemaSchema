@@ -28,4 +28,11 @@ public class Command extends ASTNode
 		}
 		return s;
 	}
+	
+	public Parameterized[] getSubjectAndModifiers() {
+		Parameterized[] sam = new Parameterized[modifiers.length+1];
+		sam[0] = subject;
+		for( int i=0; i<modifiers.length; ++i ) sam[i+1] = modifiers[i];
+		return sam;
+	}
 }

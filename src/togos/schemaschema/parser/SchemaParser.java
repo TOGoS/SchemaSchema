@@ -5,7 +5,6 @@ import java.io.Reader;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -60,7 +59,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		}
 		
 		@Override public Modifier bind(SchemaParser sp, Parameterized[] params, SourceLocation sLoc) throws InterpretError {
-			final Set<Object> values = new HashSet<Object>();
+			final Set<Object> values = new LinkedHashSet<Object>();
 			if( params.length == 0 ) {
 				values.add( Boolean.TRUE );
 			} else {
@@ -210,20 +209,20 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		return null;
 	}
 	
-	private ModifierSpec findClassModifierSpec(Phrase subject) {
+	private ModifierSpec findModifierSpec(Map<String,ModifierSpec> typeSpecificModifiers, Phrase subject) {
 		String name = subject.unquotedText();
 		ModifierSpec m;
-		if( (m = classModifiers.get(name)) != null ) return m;
+		if( (m = typeSpecificModifiers.get(name)) != null ) return m;
 		if( (m = generalModifiers.get(name)) != null ) return m;
 		return null;
 	}
 	
+	private ModifierSpec findClassModifierSpec(Phrase subject) {
+		return findModifierSpec( classModifiers, subject );
+	}
+	
 	private ModifierSpec findFieldModifierSpec(Phrase subject) {
-		String name = subject.unquotedText();
-		ModifierSpec m;
-		if( (m = fieldModifiers.get(name)) != null ) return m;
-		if( (m = generalModifiers.get(name)) != null ) return m;
-		return null;
+		return findModifierSpec( fieldModifiers, subject );
 	}
 	
 	protected Object evaluate( Object v, Parameterized[] parameters ) throws InterpretError {
@@ -245,7 +244,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		}
 		
 		String name = p.subject.unquotedText();
-		Set<Object> possibleValues = new HashSet<Object>();
+		Set<Object> possibleValues = new LinkedHashSet<Object>();
 		if( context != null ) {
 			for( Type t : context.getObjectTypes() ) {
 				if( t instanceof EnumType ) {
@@ -338,25 +337,26 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		return pred;
 	}
 	
-	private ModifierSpec parseFieldModifierSpec(final String name, Parameterized[] modifierModifiers, Block body) throws InterpretError {
+	private ModifierSpec parseModifierSpec(final String name, Map<String,ModifierSpec> predefinedModifiers, Parameterized[] modifierModifiers, Block body, final String modifierTypeName) throws InterpretError {
 		final ArrayList<Modifier> subModifiers = new ArrayList<Modifier>();
 		if( body.commands.length != 1 ) {
-			throw new InterpretError("Field modifier must have exactly 1 command, "+body.commands.length+" given",
+			throw new InterpretError(modifierTypeName+" must have exactly 1 command, "+body.commands.length+" given",
 				body.commands.length == 0 ? body.sLoc : body.commands[1].sLoc );
 		}
 		for( Command cmd : body.commands ) {
-			for( Parameterized p : cmd.modifiers ) {
-				ModifierSpec ms = findFieldModifierSpec(p.subject);
+			for( Parameterized p : cmd.getSubjectAndModifiers() ) {
+				ModifierSpec ms = findModifierSpec(predefinedModifiers, p.subject);
 				if( ms == null ) {
-					throw new InterpretError("Unrecognised field modifier: "+p.subject.unquotedText(), p.sLoc);
+					throw new InterpretError("Unrecognised "+modifierTypeName+": "+p.subject.unquotedText(), p.sLoc);
 				}
+				subModifiers.add( ms.bind(this, p.parameters, p.sLoc) );
 			}
 		}
 		return new ModifierSpec() {
 			@Override
 			public Modifier bind(SchemaParser sp, Parameterized[] params, SourceLocation sLoc) throws InterpretError {
 				if( params.length > 0 ) {
-					throw new InterpretError("Custom field modifier "+name+" takes no parameters", sLoc);
+					throw new InterpretError("Custom "+modifierTypeName+" "+name+" takes no parameters", sLoc);
 				}
 				return new FieldModifier() {
 					@Override
@@ -370,14 +370,22 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 						}
 					}
 					
-					@Override public void apply( SchemaObject fieldSpec ) {
+					@Override public void apply( SchemaObject subject ) {
 						for( Modifier m : subModifiers ) {
-							m.apply(fieldSpec);
+							m.apply(subject);
 						}
 					}
 				};
 			}
 		};
+	}
+	
+	private ModifierSpec parseFieldModifierSpec(final String name, Parameterized[] modifierModifiers, Block body) throws InterpretError {
+		return parseModifierSpec(name, fieldModifiers, modifierModifiers, body, "field modifier");
+	}
+	
+	private ModifierSpec parseClassModifierSpec(final String name, Parameterized[] modifierModifiers, Block body) throws InterpretError {
+		return parseModifierSpec(name, classModifiers, modifierModifiers, body, "class modifier");
 	}
 	
 	public ComplexType parseClass( String name, Parameterized[] modifiers, Block body ) throws InterpretError {
@@ -513,7 +521,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 			defineFieldModifier( name, parseFieldModifierSpec(name, value.modifiers, value.body) );
 		} else if( cmd.startsWithWords("class","modifier") ) {
 			String name = cmd.tail(2).unquotedText();
-			defineClassModifier( name, parseFieldModifierSpec(name, value.modifiers, value.body) );
+			defineClassModifier( name, parseClassModifierSpec(name, value.modifiers, value.body) );
 		} else if( cmd.startsWithWords("class","property") ) {
 			defineClassPredicate( parseProperty( cmd.tail(2).unquotedText(), value.modifiers, value.body ) );
 		} else if( cmd.startsWithWord("class") ) {

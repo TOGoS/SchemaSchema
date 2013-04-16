@@ -1,6 +1,5 @@
 package togos.schemaschema.parser;
 
-import java.util.HashMap;
 import java.util.Map;
 
 import junit.framework.TestCase;
@@ -14,29 +13,20 @@ import togos.schemaschema.Predicate;
 import togos.schemaschema.Predicates;
 import togos.schemaschema.PropertyUtil;
 import togos.schemaschema.SchemaObject;
+import togos.schemaschema.Type;
 import togos.schemaschema.Types;
-import togos.schemaschema.parser.asyncstream.StreamDestination;
 
 public class SchemaParserTest extends TestCase
 {
-	SchemaParser ci;
-	Map<String,SchemaObject> definedObjects;
+	SchemaParser sp;
 	
 	public void setUp() throws Exception {
-		definedObjects = new HashMap<String,SchemaObject>();
-		
-		ci = new SchemaParser();
-		ci.defineFieldModifier("key", SchemaParser.FieldIndexModifierSpec.INSTANCE);
-		ci.defineFieldModifier("index", SchemaParser.FieldIndexModifierSpec.INSTANCE);
-		ci.defineType(Types.INTEGER);
-		ci.defineType(Types.STRING);
-		ci.defineClassPredicate( Predicates.EXTENDS );
-		ci.pipe(new StreamDestination<SchemaObject>() {
-			@Override public void data(SchemaObject value) throws Exception {
-				definedObjects.put( value.getName(), value );
-			}
-			@Override public void end() throws Exception { }
-		});
+		sp = new SchemaParser();
+		sp.defineFieldModifier("key", SchemaParser.FieldIndexModifierSpec.INSTANCE);
+		sp.defineFieldModifier("index", SchemaParser.FieldIndexModifierSpec.INSTANCE);
+		sp.defineType(Types.INTEGER);
+		sp.defineType(Types.STRING);
+		sp.defineClassPredicate( Predicates.EXTENDS );
 	}
 	
 	protected void assertFieldsNamedProperly( Map<String,FieldSpec> fieldMap ) {
@@ -57,8 +47,8 @@ public class SchemaParserTest extends TestCase
 	}
 	
 	protected ComplexType parseClass( String source, String className ) throws ScriptError {
-		ci.parse(source, "(test source)");
-		SchemaObject so = definedObjects.get(className); 
+		sp.parse(source, "(test source)");
+		SchemaObject so = sp.types.get(className); 
 		assertTrue("Parsed object expected to be a complex type", so instanceof ComplexType);
 		// assertEquals( source, classes.get("some object").toString() );
 		return (ComplexType)so;
@@ -148,11 +138,11 @@ public class SchemaParserTest extends TestCase
 			"\n" +
 			"class Y : X @ foo";
 		
-		ci.parse(source, "(test script)");
+		sp.parse(source, "(test script)");
 		
-		EnumType enumX = (EnumType)ci.types.get("X");
+		EnumType enumX = (EnumType)sp.types.get("X");
 		assertNotNull(enumX);
-		Predicate predX = ci.predicates.get("X");
+		Predicate predX = sp.predicates.get("X");
 		assertNotNull(predX);
 		
 		ComplexType ot = parseClass( source, "Y" );
@@ -171,16 +161,33 @@ public class SchemaParserTest extends TestCase
 			"\n" +
 			"class property X : X\n";
 		
-		ci.parse(source, "(test script)");
+		sp.parse(source, "(test script)");
 		
-		EnumType enumX = (EnumType)ci.types.get("X");
+		EnumType enumX = (EnumType)sp.types.get("X");
 		assertNotNull(enumX);
-		Predicate predX = ci.predicates.get("X");
+		Predicate predX = sp.predicates.get("X");
 		assertNotNull(predX);
 				
 		try {
-			ci.parse("class Y : X @ barrrr\n", "(more test script)");
+			sp.parse("class Y : X @ barrrr\n", "(more test script)");
 			fail("Inalid enum value should have thrown InterpretError");
 		} catch( InterpretError e ) { }
+	}
+	
+	public void testFieldModifier() throws ScriptError {
+		String source =
+			"field modifier 'le mod' = integer\n" +
+			"class X {\n" +
+			"  field Y : le mod\n" +
+			"}";
+		
+		ComplexType classX = parseClass(source, "X");
+		assertEquals( 1, classX.fieldsByName.size() );
+		for( FieldSpec f : classX.fieldsByName.values() ) {
+			assertEquals( 1, f.getObjectTypes().size() );
+			for( Type t : f.getObjectTypes() ) {
+				assertEquals( "integer", t.getName() );
+			}
+		}
 	}
 }
