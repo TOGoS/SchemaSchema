@@ -11,4 +11,7 @@ public class Predicates
 	public static final Predicate OBJECTS_ARE_MEMBERS_OF = new Predicate("objects are members of");
 	public static final Predicate EXTENDS = new Predicate("extends", RDFS_NS+"subClassOf");
 	public static final Predicate IS_NULLABLE = new Predicate("is nullable");
+	
+	/** Used to determine what parser is used to interpret objects declared as a given type. */
+	public static final Predicate SCHEMA_COMMAND_PARSER = new Predicate("schema command parser");
 }

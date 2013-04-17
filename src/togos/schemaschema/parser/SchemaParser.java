@@ -32,6 +32,110 @@ import togos.schemaschema.parser.asyncstream.StreamUtil;
 
 public class SchemaParser extends BaseStreamSource<SchemaObject> implements StreamDestination<Command>
 {
+	interface CommandInterpreter {
+		public void interpretCommand( SchemaParser sp, Command cmd, int cmdPrefixLength ) throws Exception;
+	}
+	
+	class ClassInterpreter implements CommandInterpreter {
+		public ComplexType parseClass( SchemaParser sp, String name, Parameterized[] modifiers, Block body ) throws InterpretError {
+			ComplexType t = new ComplexType( name );
+			
+			ModifierSpec m;
+			for( Command fieldCommand : body.commands ) {
+				ArrayList<Modifier> _fieldModifiers = new ArrayList<Modifier>();
+				for( Parameterized fieldNameParameter : fieldCommand.subject.parameters ) {
+					throw new InterpretError("Field name cannot have parameters", fieldNameParameter.sLoc );
+				}
+				Block referenceBody = null;
+				for( Parameterized mod : fieldCommand.modifiers ) {
+					if( "reference".equals(mod.subject.unquotedText()) ) {
+						if( mod.parameters.length != 1 ) {
+							throw new InterpretError(
+								"'reference' field modifier takes a single parameter: "+
+								"the name of the type being referenced.  Got "+
+								mod.parameters.length+" parameters", mod.sLoc
+							);
+						}
+						if( fieldCommand.body == null ) {
+							throw new InterpretError(
+								"'reference' field specification requires a block", fieldCommand.sLoc
+							);
+						}
+						if( fieldCommand.body.commands.length == 0 ) {
+							throw new InterpretError(
+								"'reference' field specificatino requires at least one foreign key component",
+								fieldCommand.body.sLoc
+							);
+						}
+						referenceBody = fieldCommand.body;
+					} else if( (m = findClassModifierSpec(mod.subject)) != null ) {
+						_fieldModifiers.add(m.bind(sp, mod.parameters, mod.sLoc));
+					}
+				}
+				
+				FieldSpec f;
+				if( referenceBody != null ) {
+					ArrayList<ForeignKeySpec.Component> fkComponents = new ArrayList<ForeignKeySpec.Component>();
+					for( Command fkCommand : referenceBody.commands ) {
+						String foreignFieldName = singleString( fkCommand.subject, "foreign field name" );
+						
+						Command localFieldNode;
+						if( fkCommand.body != null ) {
+							if( fkCommand.body.commands.length != 1 ) {
+								throw new InterpretError(
+									"Foreign key component requires exactly 0 or 1 local field specifications; given "+
+									fkCommand.body.commands.length, fkCommand.body.sLoc
+								);
+							}
+							if( fkCommand.modifiers.length != 0 ){
+								throw new InterpretError(
+									"Modifiers not allowed for foreign field specification",
+									fkCommand.modifiers[0].sLoc
+								);
+							}
+							localFieldNode = fkCommand.body.commands[0];
+						} else {
+							localFieldNode = fkCommand;
+						}
+						
+						String localFieldName = singleString(localFieldNode.subject, "local field name");
+						FieldSpec localField = getSimpleField( t, localFieldNode );;
+						
+						// TODO: Implement rest of this
+					}
+					//fkSpec
+					//fieldType = new ForeignKeyReferenceType( singleString(mod.parameters[0], "referenced class name"), Types.REFERENCE, fkSpec);
+				} else {
+					f = defineSimpleField( t, fieldCommand );
+					for( Modifier _m : _fieldModifiers ) {
+						_m.apply(f);
+					}
+				}
+			}
+			
+			for( Parameterized mod : modifiers ) {
+				if( (m = findClassModifierSpec(mod.subject)) != null ) {
+					m.bind(sp, mod.parameters, mod.sLoc).apply(t);
+				} else {
+					throw new InterpretError("Unrecognised class modifier: '"+mod.subject+"'", mod.sLoc);
+				}
+			}
+			
+			if( PropertyUtil.isTrue(t.getProperties(), Predicates.IS_SELF_KEYED) ) {
+				t.indexesByName.put("primary", new IndexSpec("primary", t.fieldsByName.values()));
+			}
+			
+			return t;
+		}
+
+		@Override
+		public void interpretCommand(SchemaParser sp, Command cmd, int cmdPrefixLength) throws Exception {
+			sp.defineType( parseClass( sp, cmd.subject.subject.tail(cmdPrefixLength).unquotedText(), cmd.modifiers, cmd.body ) );
+		}
+	}
+	
+	
+	
 	protected static String singleString( Parameterized p, String contextDescription ) throws InterpretError {
 		if( p.parameters.length != 0 ) {
 			throw new InterpretError( contextDescription + " cannot take arguments", p.sLoc );
@@ -171,6 +275,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	protected Map<String,ModifierSpec> generalModifiers = new HashMap<String,ModifierSpec>();
 	protected Map<String,ModifierSpec> fieldModifiers = new HashMap<String,ModifierSpec>();
 	protected Map<String,ModifierSpec> classModifiers = new HashMap<String,ModifierSpec>();
+	protected Map<String,CommandInterpreter> commandInterpreters = new HashMap<String,CommandInterpreter>();
 	
 	public SchemaParser() { }
 	
@@ -387,98 +492,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	private ModifierSpec parseClassModifierSpec(final String name, Parameterized[] modifierModifiers, Block body) throws InterpretError {
 		return parseModifierSpec(name, classModifiers, modifierModifiers, body, "class modifier");
 	}
-	
-	public ComplexType parseClass( String name, Parameterized[] modifiers, Block body ) throws InterpretError {
-		ComplexType t = new ComplexType( name );
 		
-		ModifierSpec m;
-		for( Command fieldCommand : body.commands ) {
-			ArrayList<Modifier> _fieldModifiers = new ArrayList<Modifier>();
-			for( Parameterized fieldNameParameter : fieldCommand.subject.parameters ) {
-				throw new InterpretError("Field name cannot have parameters", fieldNameParameter.sLoc );
-			}
-			Block referenceBody = null;
-			for( Parameterized mod : fieldCommand.modifiers ) {
-				if( "reference".equals(mod.subject.unquotedText()) ) {
-					if( mod.parameters.length != 1 ) {
-						throw new InterpretError(
-							"'reference' field modifier takes a single parameter: "+
-							"the name of the type being referenced.  Got "+
-							mod.parameters.length+" parameters", mod.sLoc
-						);
-					}
-					if( fieldCommand.body == null ) {
-						throw new InterpretError(
-							"'reference' field specification requires a block", fieldCommand.sLoc
-						);
-					}
-					if( fieldCommand.body.commands.length == 0 ) {
-						throw new InterpretError(
-							"'reference' field specificatino requires at least one foreign key component",
-							fieldCommand.body.sLoc
-						);
-					}
-					referenceBody = fieldCommand.body;
-				} else if( (m = findClassModifierSpec(mod.subject)) != null ) {
-					_fieldModifiers.add(m.bind(this, mod.parameters, mod.sLoc));
-				}
-			}
-			
-			FieldSpec f;
-			if( referenceBody != null ) {
-				ArrayList<ForeignKeySpec.Component> fkComponents = new ArrayList<ForeignKeySpec.Component>();
-				for( Command fkCommand : referenceBody.commands ) {
-					String foreignFieldName = singleString( fkCommand.subject, "foreign field name" );
-					
-					Command localFieldNode;
-					if( fkCommand.body != null ) {
-						if( fkCommand.body.commands.length != 1 ) {
-							throw new InterpretError(
-								"Foreign key component requires exactly 0 or 1 local field specifications; given "+
-								fkCommand.body.commands.length, fkCommand.body.sLoc
-							);
-						}
-						if( fkCommand.modifiers.length != 0 ){
-							throw new InterpretError(
-								"Modifiers not allowed for foreign field specification",
-								fkCommand.modifiers[0].sLoc
-							);
-						}
-						localFieldNode = fkCommand.body.commands[0];
-					} else {
-						localFieldNode = fkCommand;
-					}
-					
-					String localFieldName = singleString(localFieldNode.subject, "local field name");
-					FieldSpec localField = getSimpleField( t, localFieldNode );;
-					
-					// TODO: Implement rest of this
-				}
-				//fkSpec
-				//fieldType = new ForeignKeyReferenceType( singleString(mod.parameters[0], "referenced class name"), Types.REFERENCE, fkSpec);
-			} else {
-				f = defineSimpleField( t, fieldCommand );
-				for( Modifier _m : _fieldModifiers ) {
-					_m.apply(f);
-				}
-			}
-		}
-		
-		for( Parameterized mod : modifiers ) {
-			if( (m = findClassModifierSpec(mod.subject)) != null ) {
-				m.bind(this, mod.parameters, mod.sLoc).apply(t);
-			} else {
-				throw new InterpretError("Unrecognised class modifier: '"+mod.subject+"'", mod.sLoc);
-			}
-		}
-		
-		if( PropertyUtil.isTrue(t.getProperties(), Predicates.IS_SELF_KEYED) ) {
-			t.indexesByName.put("primary", new IndexSpec("primary", t.fieldsByName.values()));
-		}
-		
-		return t;
-	}
-	
 	private EnumType parseEnum(String name, Parameterized[] modifiers, Block body) throws InterpretError {
 		EnumType t = new EnumType(name);
 		
@@ -514,6 +528,15 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	
 	@Override public void data(Command value) throws Exception {
 		Phrase cmd = value.subject.subject;
+		if( cmd.words.length >= 2 ) {
+			//Word lValueWord = cmd.words[cmd.words.length-1];
+			Phrase typeName = cmd.head(cmd.words.length-1);
+			CommandInterpreter ci;
+			if( (ci = commandInterpreters.get(typeName.unquotedText()) != null ) {
+				// TODOOO
+			}
+			
+		}
 		if( cmd.startsWithWords("field","property") ) {
 			defineFieldPredicate( parseProperty( cmd.tail(2).unquotedText(), value.modifiers, value.body ) );
 		} else if( cmd.startsWithWords("field","modifier") ) {

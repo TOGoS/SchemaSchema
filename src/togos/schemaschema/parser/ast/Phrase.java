@@ -56,6 +56,11 @@ public class Phrase extends ASTNode
 		return tail(1);
 	}
 	
+	public Phrase head( int length ) {
+		if( words.length < length ) length = words.length;
+		return new Phrase( Arrays.copyOfRange(words, 0, length));
+	}
+
 	public Phrase tail( int skip ) {
 		if( words.length <= skip ) return EMPTY;
 		return new Phrase( Arrays.copyOfRange(words, skip, words.length));
