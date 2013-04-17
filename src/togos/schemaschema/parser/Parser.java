@@ -95,6 +95,7 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 			
 			switch( t.type ) {
 			case SYMBOL:
+				if( "\n".equals(t.text) && words.size() == 0 ) return this;
 				return parent.phrase( toPhrase() ).token(t);
 			default:
 				words.add( new Word(t.text, t.type, t) );
