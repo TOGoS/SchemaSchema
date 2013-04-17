@@ -94,4 +94,36 @@ public class PropertyUtil
 			return key + " @ " + objectToString(v);
 		}
 	}
+	
+	public static Set<?> getFirstInheritedValues( SchemaObject obj, Predicate pred ) {
+		while( obj != null ) {
+			Set<?> values = PropertyUtil.getAll(obj.getProperties(), pred);
+			if( values.size() > 0 ) return values;
+			
+			Set<?> extended = PropertyUtil.getAll(obj.getProperties(), Predicates.EXTENDS);
+			
+			SchemaObject extendedObj = null;
+			for( Object o : extended ) {
+				if( o instanceof SchemaObject ) {
+					if( extendedObj != null ) {
+						throw new RuntimeException( obj.getName()+" extends more than one other SchemaObject; cannot find 'first' inherited value of "+pred.getName() );
+					}
+					extendedObj = (SchemaObject)o;
+				}
+			}
+			
+			obj = extendedObj;
+		}
+		
+		return Collections.emptySet();
+	}
+	
+	public static Object getFirstInheritedValue( SchemaObject obj, Predicate pred ) {
+		Set<?> values = getFirstInheritedValues(obj, pred);
+		if( values.size() > 1 ) {
+			throw new RuntimeException( obj.getName()+" has more than one value for "+pred);
+		}
+		for( Object v : values )  return v;
+		return null;
+	}
 }
