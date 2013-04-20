@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -16,8 +17,8 @@ import togos.schemaschema.EnumType;
 import togos.schemaschema.FieldSpec;
 import togos.schemaschema.ForeignKeySpec;
 import togos.schemaschema.IndexSpec;
-import togos.schemaschema.Predicates;
 import togos.schemaschema.Predicate;
+import togos.schemaschema.Predicates;
 import togos.schemaschema.PropertyUtil;
 import togos.schemaschema.SchemaObject;
 import togos.schemaschema.Type;
@@ -32,12 +33,36 @@ import togos.schemaschema.parser.asyncstream.StreamUtil;
 
 public class SchemaParser extends BaseStreamSource<SchemaObject> implements StreamDestination<Command>
 {
-	interface CommandInterpreter {
-		public void interpretCommand( SchemaParser sp, Command cmd, int cmdPrefixLength ) throws Exception;
+	protected static String singleString( Parameterized p, String contextDescription ) throws InterpretError {
+		if( p.parameters.length != 0 ) {
+			throw new InterpretError( contextDescription + " cannot take arguments", p.sLoc );
+		}
+		return p.subject.unquotedText();
 	}
 	
-	class ClassInterpreter implements CommandInterpreter {
-		public ComplexType parseClass( SchemaParser sp, String name, Parameterized[] modifiers, Block body ) throws InterpretError {
+	//// Command interpreters ////
+	
+	interface CommandInterpreter {
+		/**
+		 * @return true if this interpreter recognized and interpreted the command.
+		 * @throws Exception
+		 */
+		public boolean interpretCommand( Command cmd, int cmdPrefixLength ) throws Exception;
+	}
+	
+	abstract class DefinitionCommandInterpreter implements CommandInterpreter {
+		protected abstract void interpretDefinition( String name, Parameterized[] modifiers, Block body ) throws Exception;
+		
+		@Override public boolean interpretCommand( Command cmd, int cmdPrefixLength ) throws Exception {
+			ensureNoParameters(cmd.subject, "symbol being defined");
+			Phrase cmdPhrase = cmd.subject.subject;
+			interpretDefinition( cmdPhrase.tail(cmdPrefixLength).unquotedText(), cmd.modifiers, cmd.body );
+			return true;
+		}
+	}
+	
+	class ClassDefinitionCommandInterpreter extends DefinitionCommandInterpreter {
+		public ComplexType parseClass( String name, Parameterized[] modifiers, Block body ) throws InterpretError {
 			ComplexType t = new ComplexType( name );
 			
 			ModifierSpec m;
@@ -69,7 +94,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 						}
 						referenceBody = fieldCommand.body;
 					} else if( (m = findClassModifierSpec(mod.subject)) != null ) {
-						_fieldModifiers.add(m.bind(sp, mod.parameters, mod.sLoc));
+						_fieldModifiers.add(m.bind(SchemaParser.this, mod.parameters, mod.sLoc));
 					}
 				}
 				
@@ -115,7 +140,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 			
 			for( Parameterized mod : modifiers ) {
 				if( (m = findClassModifierSpec(mod.subject)) != null ) {
-					m.bind(sp, mod.parameters, mod.sLoc).apply(t);
+					m.bind(SchemaParser.this, mod.parameters, mod.sLoc).apply(t);
 				} else {
 					throw new InterpretError("Unrecognised class modifier: '"+mod.subject+"'", mod.sLoc);
 				}
@@ -128,20 +153,77 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 			return t;
 		}
 
-		@Override
-		public void interpretCommand(SchemaParser sp, Command cmd, int cmdPrefixLength) throws Exception {
-			sp.defineType( parseClass( sp, cmd.subject.subject.tail(cmdPrefixLength).unquotedText(), cmd.modifiers, cmd.body ) );
+		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body ) throws Exception {
+			defineType( parseClass( name, modifiers, body ) );
 		}
 	}
 	
-	
-	
-	protected static String singleString( Parameterized p, String contextDescription ) throws InterpretError {
-		if( p.parameters.length != 0 ) {
-			throw new InterpretError( contextDescription + " cannot take arguments", p.sLoc );
+	class EnumDefinitionCommandInterpreter extends DefinitionCommandInterpreter {
+		private EnumType parseEnum( String name, Parameterized[] modifiers, Block body ) throws InterpretError {
+			EnumType t = new EnumType(name);
+			
+			ModifierSpec m;
+			for( Parameterized mod : modifiers ) {
+				if( (m = findClassModifierSpec(mod.subject)) != null ) {
+					m.bind(SchemaParser.this, mod.parameters, mod.sLoc).apply(t);
+				} else {
+					throw new InterpretError("Unrecognised class modifier: '"+mod.subject+"'", mod.sLoc);
+				}
+			}
+			
+			for( Command c : body.commands ) {
+				ensureNoParameters(c.subject, "enum value");
+				for( Parameterized mod : c.modifiers ) {
+					throw new InterpretError("Enum value modifiers are ignored", mod.sLoc);
+				}
+				if( c.body.commands.length > 0 ) {
+					throw new InterpretError("Enum value body is ignored", c.body.sLoc);
+				}
+				
+				t.addValidValue(c.subject.subject.unquotedText());
+			}
+			
+			return t;
 		}
-		return p.subject.unquotedText();
+		
+		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body ) throws Exception {
+			defineType( parseEnum( name, modifiers, body ) );
+		}
 	}
+	
+	class PropertyDefinitionCommandInterpreter extends DefinitionCommandInterpreter {
+		final Map<String,ModifierSpec> modifierMap;
+		
+		public PropertyDefinitionCommandInterpreter( Map<String,ModifierSpec> modifierMap ) {
+			this.modifierMap = modifierMap;
+		}
+		
+		protected void definePredicate( Predicate pred ) throws Exception {
+			things.put( pred.name, pred );
+			predicates.put( pred.name, pred );
+			modifierMap.put( pred.name, new SimplePredicateModifierSpec(pred) );
+			_data( pred );
+		}
+		
+		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body ) throws Exception {
+			definePredicate( parseProperty( name, modifiers, body ) );
+		}
+	}
+	
+	class ModifierDefinitionCommandInterpreter extends DefinitionCommandInterpreter {
+		final Map<String,ModifierSpec> predefinedModifiers;
+		final String modifierTypeName;
+		public ModifierDefinitionCommandInterpreter( Map<String,ModifierSpec> predefinedModifiers, String modifierTypeName ) {
+			this.predefinedModifiers = predefinedModifiers;
+			this.modifierTypeName = modifierTypeName;
+		}
+		
+		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body ) throws Exception {
+			fieldModifiers.put( name, parseModifierSpec(name, modifiers, body, predefinedModifiers, modifierTypeName) );
+		}
+	}
+	
+	//// Modifiers
 	
 	interface ModifierSpec {
 		public Modifier bind( SchemaParser sp, Parameterized[] params, SourceLocation sLoc ) throws InterpretError;
@@ -310,8 +392,8 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		fieldModifiers.put( name, spec );
 	}
 	
-	private ModifierSpec findPropertyModifierSpec(Phrase subject) {
-		return null;
+	public void defineCommand( String name, CommandInterpreter interpreter ) {
+		commandInterpreters.put( name, interpreter );
 	}
 	
 	private ModifierSpec findModifierSpec(Map<String,ModifierSpec> typeSpecificModifiers, Phrase subject) {
@@ -429,20 +511,22 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		Predicate pred = new Predicate(name);
 		for( Parameterized p : modifiers ) {
 			ModifierSpec ms;
-			if( (ms = findPropertyModifierSpec(p.subject)) != null ) {
-				// TODO: evaluate modifier
-			}
-			Object modValue = evaluate( null, p );
-			if( modValue instanceof Type ) {
+			Object modValue;
+			if( (ms = findModifierSpec(Collections.<String,ModifierSpec>emptyMap(), p.subject)) != null ) {
+				ms.bind(this, p.parameters, p.sLoc).apply(pred);
+			} else if( (modValue = evaluate( null, p )) != null && modValue instanceof Type ) {
 				pred.addObjectType( (Type)modValue );
 			} else {
 				throw new InterpretError("Don't know how to interpret property modifier value: "+modValue.getClass(), p.sLoc);
 			}
 		}
+		for( Command c : body.commands ) {
+			throw new InterpretError("Property definitions cannot have a block", c.sLoc );
+		}
 		return pred;
 	}
 	
-	private ModifierSpec parseModifierSpec(final String name, Map<String,ModifierSpec> predefinedModifiers, Parameterized[] modifierModifiers, Block body, final String modifierTypeName) throws InterpretError {
+	private ModifierSpec parseModifierSpec(final String name, Parameterized[] modifierModifiers, Block body, Map<String,ModifierSpec> predefinedModifiers, final String modifierTypeName) throws InterpretError {
 		final ArrayList<Modifier> subModifiers = new ArrayList<Modifier>();
 		if( body.commands.length != 1 ) {
 			throw new InterpretError(modifierTypeName+" must have exactly 1 command, "+body.commands.length+" given",
@@ -485,41 +569,6 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		};
 	}
 	
-	private ModifierSpec parseFieldModifierSpec(final String name, Parameterized[] modifierModifiers, Block body) throws InterpretError {
-		return parseModifierSpec(name, fieldModifiers, modifierModifiers, body, "field modifier");
-	}
-	
-	private ModifierSpec parseClassModifierSpec(final String name, Parameterized[] modifierModifiers, Block body) throws InterpretError {
-		return parseModifierSpec(name, classModifiers, modifierModifiers, body, "class modifier");
-	}
-		
-	private EnumType parseEnum(String name, Parameterized[] modifiers, Block body) throws InterpretError {
-		EnumType t = new EnumType(name);
-		
-		ModifierSpec m;
-		for( Parameterized mod : modifiers ) {
-			if( (m = findClassModifierSpec(mod.subject)) != null ) {
-				m.bind(this, mod.parameters, mod.sLoc).apply(t);
-			} else {
-				throw new InterpretError("Unrecognised class modifier: '"+mod.subject+"'", mod.sLoc);
-			}
-		}
-		
-		for( Command c : body.commands ) {
-			ensureNoParameters(c.subject, "enum value");
-			for( Parameterized mod : c.modifiers ) {
-				throw new InterpretError("Enum value modifiers are ignored", mod.sLoc);
-			}
-			if( c.body.commands.length > 0 ) {
-				throw new InterpretError("Enum value body is ignored", c.body.sLoc);
-			}
-			
-			t.addValidValue(c.subject.subject.unquotedText());
-		}
-		
-		return t;
-	}
-	
 	protected void ensureNoParameters( Parameterized s, String context ) throws InterpretError {
 		for( Parameterized classNameParameter : s.parameters ) {
 			throw new InterpretError(context + " cannot have parameters", classNameParameter.sLoc );
@@ -529,33 +578,16 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	@Override public void data(Command value) throws Exception {
 		Phrase cmd = value.subject.subject;
 		if( cmd.words.length >= 2 ) {
-			//Word lValueWord = cmd.words[cmd.words.length-1];
 			Phrase typeName = cmd.head(cmd.words.length-1);
 			CommandInterpreter ci;
-			if( (ci = commandInterpreters.get(typeName.unquotedText()) != null ) {
-				// TODOOO
+			if( (ci = commandInterpreters.get(typeName.unquotedText())) != null ) {
+				if( ci.interpretCommand(value, cmd.words.length-1) ) {
+					return;
+				}
 			}
-			
 		}
-		if( cmd.startsWithWords("field","property") ) {
-			defineFieldPredicate( parseProperty( cmd.tail(2).unquotedText(), value.modifiers, value.body ) );
-		} else if( cmd.startsWithWords("field","modifier") ) {
-			String name = cmd.tail(2).unquotedText();
-			defineFieldModifier( name, parseFieldModifierSpec(name, value.modifiers, value.body) );
-		} else if( cmd.startsWithWords("class","modifier") ) {
-			String name = cmd.tail(2).unquotedText();
-			defineClassModifier( name, parseClassModifierSpec(name, value.modifiers, value.body) );
-		} else if( cmd.startsWithWords("class","property") ) {
-			defineClassPredicate( parseProperty( cmd.tail(2).unquotedText(), value.modifiers, value.body ) );
-		} else if( cmd.startsWithWord("class") ) {
-			ensureNoParameters(value.subject, "class name");
-			defineType( parseClass( value.subject.subject.tail().unquotedText(), value.modifiers, value.body ) );
-		} else if( cmd.startsWithWord("enum") ) {
-			ensureNoParameters(value.subject, "enum name");
-			defineType( parseEnum( value.subject.subject.tail().unquotedText(), value.modifiers, value.body ) );
-		} else {
-			throw new InterpretError("Unrecognised command: '"+cmd+"'", value.sLoc);
-		}
+		
+		throw new InterpretError("Unrecognised command: '"+cmd+"'", value.sLoc);
 	}
 
 	@Override public void end() throws Exception {

@@ -1,7 +1,5 @@
 package togos.schemaschema;
 
-import togos.schemaschema.parser.SchemaParser;
-
 public class Types
 {
 	private Types() { }
@@ -14,9 +12,5 @@ public class Types
 	public static final Type STRING    = new SimpleType("string");
 	public static final Type REFERENCE = new SimpleType("reference");
 	public static final Type OBJECT    = new SimpleType("object");
-	
 	public static final Type CLASS     = new SimpleType("class");
-	static {
-		PropertyUtil.add( CLASS.getProperties(), Predicates.SCHEMA_COMMAND_PARSER, SchemaParser.CLASS_COMMAND_PARSER );
-	}
 }

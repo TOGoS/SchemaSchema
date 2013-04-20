@@ -22,6 +22,7 @@ public class SchemaParserTest extends TestCase
 	
 	public void setUp() throws Exception {
 		sp = new SchemaParser();
+		CommandInterpreters.defineTypeDefinitionCommands(sp);
 		sp.defineFieldModifier("key", SchemaParser.FieldIndexModifierSpec.INSTANCE);
 		sp.defineFieldModifier("index", SchemaParser.FieldIndexModifierSpec.INSTANCE);
 		sp.defineType(Types.INTEGER);
@@ -111,7 +112,7 @@ public class SchemaParserTest extends TestCase
 	
 	public void testParseEnum() throws ScriptError {
 		String source =
-			"enum colorful color {\n" +
+			"enum 'colorful color' {\n" +
 			"\tyellow\n" +
 			"\tgreen\n" +
 			"\tred\n" +
@@ -145,7 +146,7 @@ public class SchemaParserTest extends TestCase
 		Predicate predX = sp.predicates.get("X");
 		assertNotNull(predX);
 		
-		ComplexType yClass = parseClass( source, "Y" );
+		ComplexType yClass = (ComplexType)sp.types.get("Y");
 		assertNotNull( yClass );
 		assertEquals( 1, PropertyUtil.getAll(yClass.getProperties(), predX).size() );
 		for( Object v : PropertyUtil.getAll(yClass.getProperties(), predX) ) {
