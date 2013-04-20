@@ -12,6 +12,7 @@ import java.util.Set;
 
 import togos.lang.InterpretError;
 import togos.lang.SourceLocation;
+import togos.schemaschema.BaseSchemaObject;
 import togos.schemaschema.ComplexType;
 import togos.schemaschema.EnumType;
 import togos.schemaschema.FieldSpec;
@@ -22,6 +23,7 @@ import togos.schemaschema.Predicates;
 import togos.schemaschema.PropertyUtil;
 import togos.schemaschema.SchemaObject;
 import togos.schemaschema.Type;
+import togos.schemaschema.Types;
 import togos.schemaschema.parser.ast.Block;
 import togos.schemaschema.parser.ast.Command;
 import togos.schemaschema.parser.ast.Parameterized;
@@ -62,8 +64,17 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	}
 	
 	class ClassDefinitionCommandInterpreter extends DefinitionCommandInterpreter {
+		final Type metaClass;
+		public ClassDefinitionCommandInterpreter( Type metaClass ) {
+			this.metaClass = metaClass;
+		}
+		public ClassDefinitionCommandInterpreter() {
+			this(null);
+		}
+		
 		public ComplexType parseClass( String name, Parameterized[] modifiers, Block body ) throws InterpretError {
 			ComplexType t = new ComplexType( name );
+			if( metaClass != null ) PropertyUtil.add( t.properties, Predicates.IS_MEMBER_OF, metaClass );
 			
 			ModifierSpec m;
 			for( Command fieldCommand : body.commands ) {
@@ -150,6 +161,18 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 				t.indexesByName.put("primary", new IndexSpec("primary", t.fieldsByName.values()));
 			}
 			
+			CommandInterpreter instanceInterpreter;
+			if( PropertyUtil.getFirstInheritedValue(t, Predicates.EXTENDS) == Types.CLASS ) {
+				// If the defined class extends class, then instances will themselves be classes
+				// and can use ClassDefinitionCommandInterpreter
+				instanceInterpreter = new ClassDefinitionCommandInterpreter( t );
+			} else {
+				// Otherwise instances are just generic objects and
+				// will use the plain old object interpreter
+				instanceInterpreter = new ObjectCommandInterpreter();
+			}
+			commandInterpreters.put(t.getName(), instanceInterpreter);
+			
 			return t;
 		}
 
@@ -191,17 +214,30 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		}
 	}
 	
+	class ObjectCommandInterpreter extends DefinitionCommandInterpreter {
+		public ObjectCommandInterpreter() { }
+		
+		protected void defineObject( SchemaObject obj ) throws Exception {
+			things.put( obj.getName(), obj );
+			_data( obj );
+		}
+		
+		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body ) throws Exception {
+			defineObject( parseObject( name, modifiers, body ) );
+		}
+	}
+	
 	class PropertyDefinitionCommandInterpreter extends DefinitionCommandInterpreter {
-		final Map<String,ModifierSpec> modifierMap;
+		final Map<String,ModifierSpec> registeredModifiers;
 		
 		public PropertyDefinitionCommandInterpreter( Map<String,ModifierSpec> modifierMap ) {
-			this.modifierMap = modifierMap;
+			this.registeredModifiers = modifierMap;
 		}
 		
 		protected void definePredicate( Predicate pred ) throws Exception {
 			things.put( pred.name, pred );
 			predicates.put( pred.name, pred );
-			modifierMap.put( pred.name, new SimplePredicateModifierSpec(pred) );
+			defineModifier( registeredModifiers, pred.name, new SimplePredicateModifierSpec(pred) );
 			_data( pred );
 		}
 		
@@ -211,15 +247,15 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	}
 	
 	class ModifierDefinitionCommandInterpreter extends DefinitionCommandInterpreter {
-		final Map<String,ModifierSpec> predefinedModifiers;
+		final Map<String,ModifierSpec> registeredModifiers;
 		final String modifierTypeName;
 		public ModifierDefinitionCommandInterpreter( Map<String,ModifierSpec> predefinedModifiers, String modifierTypeName ) {
-			this.predefinedModifiers = predefinedModifiers;
+			this.registeredModifiers = predefinedModifiers;
 			this.modifierTypeName = modifierTypeName;
 		}
 		
 		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body ) throws Exception {
-			fieldModifiers.put( name, parseModifierSpec(name, modifiers, body, predefinedModifiers, modifierTypeName) );
+			defineModifier( registeredModifiers, name, parseModifierSpec(name, modifiers, body, registeredModifiers, modifierTypeName) );
 		}
 	}
 	
@@ -370,26 +406,41 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		_data( t );
 	}
 	
+	boolean allowIsLessModifierShorthand = true;
+	
+	protected void defineModifier( Map<String,ModifierSpec> modifierMap, String name, ModifierSpec spec ) {
+		modifierMap.put( name, spec );
+		if( allowIsLessModifierShorthand ) {
+			if( name.startsWith("is ") ) {
+				String shorthand = name.substring(3);
+				System.err.println("Duplicate '"+name+"' as '"+shorthand+"'");
+				if( modifierMap.containsKey(shorthand) ) { 
+					modifierMap.put( shorthand, spec );
+				}
+			}
+		}
+	}
+	
+	public void defineFieldModifier( String name, ModifierSpec spec ) {
+		defineModifier(fieldModifiers, name, spec);
+	}
+	
+	public void defineClassModifier( String name, ModifierSpec spec ) {
+		defineModifier(classModifiers, name, spec);
+	}
+	
 	public void defineFieldPredicate( Predicate pred ) throws Exception {
 		things.put( pred.name, pred );
 		predicates.put( pred.name, pred );
-		fieldModifiers.put( pred.name, new SimplePredicateModifierSpec(pred) );
+		defineFieldModifier( pred.name, new SimplePredicateModifierSpec(pred) );
 		_data( pred );
 	}
 	
 	public void defineClassPredicate( Predicate pred ) throws Exception {
 		things.put( pred.name, pred );
 		predicates.put( pred.name, pred );
-		classModifiers.put( pred.name, new SimplePredicateModifierSpec(pred) );
+		defineClassModifier( pred.name, new SimplePredicateModifierSpec(pred) );
 		_data( pred );
-	}
-	
-	public void defineClassModifier( String name, ModifierSpec spec ) {
-		classModifiers.put( name, spec );
-	}
-	
-	public void defineFieldModifier( String name, ModifierSpec spec ) {
-		fieldModifiers.put( name, spec );
 	}
 	
 	public void defineCommand( String name, CommandInterpreter interpreter ) {
@@ -505,6 +556,25 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 			throw new InterpretError( "Cannot redefine field '"+fieldName+"'", fieldCommand.sLoc );
 		}
 		return fieldSpec;
+	}
+	
+	protected SchemaObject parseObject( String name, Parameterized[] modifiers, Block body ) throws InterpretError {
+		BaseSchemaObject obj = new BaseSchemaObject( name );
+		for( Parameterized p : modifiers ) {
+			ModifierSpec ms;
+			Object modValue;
+			if( (ms = findModifierSpec(Collections.<String,ModifierSpec>emptyMap(), p.subject)) != null ) {
+				ms.bind(this, p.parameters, p.sLoc).apply(obj);
+			} else if( (modValue = evaluate( null, p )) != null && modValue instanceof Type ) {
+				PropertyUtil.add( obj.getProperties(), Predicates.IS_MEMBER_OF, (Type)modValue );
+			} else {
+				throw new InterpretError("Don't know how to interpret property modifier value: "+modValue.getClass(), p.sLoc);
+			}
+		}
+		for( Command c : body.commands ) {
+			throw new InterpretError("Object literals cannot have a block", c.sLoc );
+		}
+		return obj;
 	}
 	
 	protected Predicate parseProperty( String name, Parameterized[] modifiers, Block body ) throws InterpretError {
