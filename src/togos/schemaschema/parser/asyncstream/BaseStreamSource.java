@@ -21,4 +21,9 @@ public class BaseStreamSource<T> implements StreamSource<T>
 			dest.end();
 		}
 	}
+	
+	/** Default implementation for StreamDestination<?> */
+	public void end() throws Exception {
+		_end();
+	}
 }

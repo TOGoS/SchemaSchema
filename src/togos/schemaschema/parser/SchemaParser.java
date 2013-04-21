@@ -1,15 +1,16 @@
 package togos.schemaschema.parser;
 
 import java.io.IOException;
+import java.io.PrintStream;
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
+import togos.lang.BaseSourceLocation;
 import togos.lang.InterpretError;
 import togos.lang.SourceLocation;
 import togos.schemaschema.BaseSchemaObject;
@@ -40,6 +41,14 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 			throw new InterpretError( contextDescription + " cannot take arguments", p.sLoc );
 		}
 		return p.subject.unquotedText();
+	}
+	
+	protected static void applyFieldModifier( Modifier m, ComplexType t, FieldSpec f ) {
+		if( m instanceof FieldModifier ) {
+			((FieldModifier)m).apply(t, f);
+		} else {
+			m.apply(f);
+		}
 	}
 	
 	//// Command interpreters ////
@@ -76,7 +85,6 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 			ComplexType t = new ComplexType( name );
 			if( metaClass != null ) PropertyUtil.add( t.properties, Predicates.IS_MEMBER_OF, metaClass );
 			
-			ModifierSpec m;
 			for( Command fieldCommand : body.commands ) {
 				ArrayList<Modifier> _fieldModifiers = new ArrayList<Modifier>();
 				for( Parameterized fieldNameParameter : fieldCommand.subject.parameters ) {
@@ -104,7 +112,8 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 							);
 						}
 						referenceBody = fieldCommand.body;
-					} else if( (m = classModifiers.get(mod.subject.unquotedText(), ModifierSpec.class)) != null ) {
+					} else {
+						ModifierSpec m = fieldModifiers.get(mod.subject);
 						_fieldModifiers.add(m.bind(SchemaParser.this, mod.parameters, mod.sLoc));
 					}
 				}
@@ -143,18 +152,12 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 					//fieldType = new ForeignKeyReferenceType( singleString(mod.parameters[0], "referenced class name"), Types.REFERENCE, fkSpec);
 				} else {
 					f = defineSimpleField( t, fieldCommand );
-					for( Modifier _m : _fieldModifiers ) {
-						_m.apply(f);
-					}
 				}
 			}
 			
 			for( Parameterized mod : modifiers ) {
-				if( (m = findClassModifierSpec(mod.subject)) != null ) {
-					m.bind(SchemaParser.this, mod.parameters, mod.sLoc).apply(t);
-				} else {
-					throw new InterpretError("Unrecognised class modifier: '"+mod.subject+"'", mod.sLoc);
-				}
+				ModifierSpec m = classModifiers.get(mod.subject);
+				m.bind(SchemaParser.this, mod.parameters, mod.sLoc).apply(t);
 			}
 			
 			if( PropertyUtil.isTrue(t.getProperties(), Predicates.IS_SELF_KEYED) ) {
@@ -185,13 +188,9 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		private EnumType parseEnum( String name, Parameterized[] modifiers, Block body ) throws InterpretError {
 			EnumType t = new EnumType(name);
 			
-			ModifierSpec m;
 			for( Parameterized mod : modifiers ) {
-				if( (m = findClassModifierSpec(mod.subject)) != null ) {
-					m.bind(SchemaParser.this, mod.parameters, mod.sLoc).apply(t);
-				} else {
-					throw new InterpretError("Unrecognised class modifier: '"+mod.subject+"'", mod.sLoc);
-				}
+				ModifierSpec m = classModifiers.get(mod.subject);
+				m.bind(SchemaParser.this, mod.parameters, mod.sLoc).apply(t);
 			}
 			
 			for( Command c : body.commands ) {
@@ -228,16 +227,16 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	}
 	
 	class PropertyDefinitionCommandInterpreter extends DefinitionCommandInterpreter {
-		final Map<String,ModifierSpec> registeredModifiers;
+		final SymbolLookupContext<ModifierSpec> modifierLookupContext;
 		
-		public PropertyDefinitionCommandInterpreter( Map<String,ModifierSpec> modifierMap ) {
-			this.registeredModifiers = modifierMap;
+		public PropertyDefinitionCommandInterpreter( SymbolLookupContext<ModifierSpec> modifierLookupContext ) {
+			this.modifierLookupContext = modifierLookupContext;
 		}
 		
 		protected void definePredicate( Predicate pred ) throws Exception {
 			things.put( pred.name, pred );
 			predicates.put( pred.name, pred );
-			defineModifier( registeredModifiers, pred.name, new SimplePredicateModifierSpec(pred) );
+			defineModifier( modifierLookupContext, pred.name, new SimplePredicateModifierSpec(pred) );
 			_data( pred );
 		}
 		
@@ -248,14 +247,12 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	
 	class ModifierDefinitionCommandInterpreter extends DefinitionCommandInterpreter {
 		final SymbolLookupContext<ModifierSpec> registeredModifiers;
-		final String modifierTypeName;
-		public ModifierDefinitionCommandInterpreter( SymbolLookupContext<ModifierSpec> predefinedModifiers, String modifierTypeName ) {
+		public ModifierDefinitionCommandInterpreter( SymbolLookupContext<ModifierSpec> predefinedModifiers ) {
 			this.registeredModifiers = predefinedModifiers;
-			this.modifierTypeName = modifierTypeName;
 		}
 		
 		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body ) throws Exception {
-			defineModifier( registeredModifiers, name, parseModifierSpec(name, modifiers, body, registeredModifiers, modifierTypeName) );
+			defineModifier( registeredModifiers, name, parseModifierSpec(name, modifiers, body, registeredModifiers) );
 		}
 	}
 	
@@ -363,8 +360,11 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	/**
 	 * Used to specify an new (anonymous) enum type for a single field
 	 */
-	public static class EnumFieldModifierSpec implements ModifierSpec {
-		public static final EnumFieldModifierSpec INSTANCE = new EnumFieldModifierSpec(); 
+	public static class EnumModifierSpec implements ModifierSpec {
+		final Predicate pred;
+		public EnumModifierSpec( Predicate pred ) {
+			this.pred = pred;
+		}
 		
 		@Override
 		public Modifier bind(SchemaParser sp, Parameterized[] params, SourceLocation sLoc) throws InterpretError {
@@ -373,13 +373,14 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 				for( Parameterized pp : p.parameters ) {
 					throw new InterpretError( "Enum values cannot themselves take parameters", pp.sLoc);
 				}
+				valueNames.add(p.subject.unquotedText());
 			}
 			
 			return new Modifier() {
 				@Override public void apply(SchemaObject subject) {
 					EnumType er = new EnumType(subject.getName());
 					for( String valueName : valueNames ) er.addValidValue(valueName);
-					PropertyUtil.add( subject.getProperties(), Predicates.OBJECTS_ARE_MEMBERS_OF, er );
+					PropertyUtil.add( subject.getProperties(), pred, er );
 				}
 			};
 		}
@@ -389,11 +390,27 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	
 	class SymbolLookupContext<T> {
 		final SymbolLookupContext<? super T> parent;
+		final String name;
 		final Map<String,T> values = new HashMap<String,T>();
-		SymbolLookupContext( SymbolLookupContext<? super T> parent ) {
+		final Class<T> valueClass;
+		SymbolLookupContext( SymbolLookupContext<? super T> parent, String name, Class<T> valueClass ) {
 			this.parent = parent;
+			this.name = name;
+			this.valueClass = valueClass;
 		}
-		public T get(String name, Class<T> requiredType) {
+		
+		protected void dump( PrintStream dest ) {
+			SymbolLookupContext<?> ctx = this;
+			while( ctx != null ) {
+				dest.println(ctx.name+" context");
+				for( Map.Entry<String,?> e : ctx.values.entrySet() ) {
+					dest.println("  "+e.getKey()+" : "+e.getValue()+" ("+e.getValue().getClass().getName()+")");
+				}
+				ctx = ctx.parent;
+			}
+		}
+		
+		public T get(String name, Class<T> requiredType, boolean throwOnNotFound, boolean throwOnWrongType, SourceLocation refLoc) throws InterpretError {
 			SymbolLookupContext<? super T> ctx = this;
 			while( ctx != null ) {
 				Object o = values.get(name);
@@ -401,27 +418,45 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 					if( requiredType.isInstance(o) ) {
 						return requiredType.cast(o);
 					} else {
+						if( throwOnWrongType ) {
+							throw new InterpretError(this.name + " '"+name+"' is not a "+requiredType.getName()+", but "+o.getClass().getName(), refLoc);
+						}
 						return null;
 					}
 				}
+				ctx = ctx.parent;
+			}
+			if( throwOnNotFound ) {
+				//dump( System.err );
+				throw new InterpretError("'"+name+"' is not defined as a "+this.name, refLoc);
 			}
 			return null;
 		}
+		
+		public T get(Phrase p) throws InterpretError {
+			return get(p.unquotedText(), valueClass, true, true, p.sLoc); 
+		}
+		
+		public T get(String name) throws InterpretError {
+			return get(name, valueClass, true, true, BaseSourceLocation.NONE); 
+		}
+		
 		public void put(String name, T value) {
 			SymbolLookupContext<? super T> ctx = this;
 			while( ctx != null ) {
 				ctx.values.put(name, value);
+				ctx = ctx.parent;
 			}
 		}
 	}
 	
-	protected SymbolLookupContext<Object> things = new SymbolLookupContext<Object>(null);
-	protected SymbolLookupContext<Type> types = new SymbolLookupContext<Type>(things);
-	protected SymbolLookupContext<Predicate> predicates = new SymbolLookupContext<Predicate>(things);
-	protected SymbolLookupContext<ModifierSpec> generalModifiers = new SymbolLookupContext<ModifierSpec>(null);
-	protected SymbolLookupContext<ModifierSpec> fieldModifiers = new SymbolLookupContext<ModifierSpec>(generalModifiers);
-	protected SymbolLookupContext<ModifierSpec> classModifiers = new SymbolLookupContext<ModifierSpec>(generalModifiers);
-	protected SymbolLookupContext<CommandInterpreter> commandInterpreters = new SymbolLookupContext<CommandInterpreter>(null); 
+	protected SymbolLookupContext<Object> things = new SymbolLookupContext<Object>(null, "thing", Object.class);
+	protected SymbolLookupContext<Type> types = new SymbolLookupContext<Type>(things, "type", Type.class);
+	protected SymbolLookupContext<Predicate> predicates = new SymbolLookupContext<Predicate>(things, "predicate", Predicate.class);
+	protected SymbolLookupContext<ModifierSpec> generalModifiers = new SymbolLookupContext<ModifierSpec>(null, "general modifier", ModifierSpec.class);
+	protected SymbolLookupContext<ModifierSpec> fieldModifiers = new SymbolLookupContext<ModifierSpec>(generalModifiers, "field modifier", ModifierSpec.class);
+	protected SymbolLookupContext<ModifierSpec> classModifiers = new SymbolLookupContext<ModifierSpec>(generalModifiers, "class modifier", ModifierSpec.class);
+	protected SymbolLookupContext<CommandInterpreter> commandInterpreters = new SymbolLookupContext<CommandInterpreter>(null, "command interpreter", CommandInterpreter.class); 
 	
 	public SchemaParser() { }
 	
@@ -440,8 +475,8 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		if( allowIsLessModifierShorthand ) {
 			if( name.startsWith("is ") ) {
 				String shorthand = name.substring(3);
-				System.err.println("Duplicate '"+name+"' as '"+shorthand+"'");
-				if( modifierMap.values.containsKey(shorthand) ) { 
+				//System.err.println("Duplicate '"+name+"' as '"+shorthand+"'");
+				if( !modifierMap.values.containsKey(shorthand) ) { 
 					modifierMap.put( shorthand, spec );
 				}
 			}
@@ -491,6 +526,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		if( p.subject.words.length == 1 && p.subject.words[0].quoting == Token.Type.DOUBLE_QUOTED_STRING ) {
 			return p.subject.unquotedText();
 		}
+		// TODO: Parse number literals
 		
 		String name = p.subject.unquotedText();
 		Set<Object> possibleValues = new LinkedHashSet<Object>();
@@ -507,7 +543,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		}
 		
 		if( possibleValues.size() == 0 ) {
-			Object v = things.get(name);
+			Object v = things.get(p.subject);
 			if( v != null ) possibleValues.add( v );
 		}
 		
@@ -536,19 +572,9 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		FieldSpec fieldSpec = new FieldSpec( fieldName );
 		
 		for( Parameterized modifier : fieldCommand.modifiers ) {
-			ModifierSpec ms;
-			if( (ms = findFieldModifierSpec(modifier.subject)) != null ) {
-				Modifier m = ms.bind( this, modifier.parameters, modifier.sLoc );
-				if( m instanceof FieldModifier ) {
-					((FieldModifier)m).apply( objectType, fieldSpec );
-				} else {
-					m.apply( fieldSpec );
-				}
-			} else {
-				throw new InterpretError(
-					"Unrecognised field modifier: "+modifier.subject.toString(), modifier.sLoc
-				);
-			}
+			ModifierSpec ms = fieldModifiers.get(modifier.subject);
+			Modifier m = ms.bind( this, modifier.parameters, modifier.sLoc );
+			applyFieldModifier( m, objectType, fieldSpec );
 		}
 		
 		objectType.fieldsByName.put( fieldSpec.name, fieldSpec );
@@ -572,15 +598,8 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	protected SchemaObject parseObject( String name, Parameterized[] modifiers, Block body ) throws InterpretError {
 		BaseSchemaObject obj = new BaseSchemaObject( name );
 		for( Parameterized p : modifiers ) {
-			ModifierSpec ms;
-			Object modValue;
-			if( (ms = findModifierSpec(Collections.<String,ModifierSpec>emptyMap(), p.subject)) != null ) {
-				ms.bind(this, p.parameters, p.sLoc).apply(obj);
-			} else if( (modValue = evaluate( null, p )) != null && modValue instanceof Type ) {
-				PropertyUtil.add( obj.getProperties(), Predicates.IS_MEMBER_OF, (Type)modValue );
-			} else {
-				throw new InterpretError("Don't know how to interpret property modifier value: "+modValue.getClass(), p.sLoc);
-			}
+			ModifierSpec ms = generalModifiers.get(p.subject);
+			ms.bind(this, p.parameters, p.sLoc).apply(obj);
 		}
 		for( Command c : body.commands ) {
 			throw new InterpretError("Object literals cannot have a block", c.sLoc );
@@ -591,15 +610,8 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	protected Predicate parseProperty( String name, Parameterized[] modifiers, Block body ) throws InterpretError {
 		Predicate pred = new Predicate(name);
 		for( Parameterized p : modifiers ) {
-			ModifierSpec ms;
-			Object modValue;
-			if( (ms = findModifierSpec(Collections.<String,ModifierSpec>emptyMap(), p.subject)) != null ) {
-				ms.bind(this, p.parameters, p.sLoc).apply(pred);
-			} else if( (modValue = evaluate( null, p )) != null && modValue instanceof Type ) {
-				pred.addObjectType( (Type)modValue );
-			} else {
-				throw new InterpretError("Don't know how to interpret property modifier value: "+modValue.getClass(), p.sLoc);
-			}
+			ModifierSpec ms = fieldModifiers.get(p.subject);
+			ms.bind(this, p.parameters, p.sLoc).apply(pred);
 		}
 		for( Command c : body.commands ) {
 			throw new InterpretError("Property definitions cannot have a block", c.sLoc );
@@ -607,18 +619,15 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		return pred;
 	}
 	
-	private ModifierSpec parseModifierSpec(final String name, Parameterized[] modifierModifiers, Block body, SymbolLookupContext<ModifierSpec> predefinedModifiers, final String modifierTypeName) throws InterpretError {
+	private ModifierSpec parseModifierSpec(final String name, Parameterized[] modifierModifiers, Block body, final SymbolLookupContext<ModifierSpec> predefinedModifiers) throws InterpretError {
 		final ArrayList<Modifier> subModifiers = new ArrayList<Modifier>();
 		if( body.commands.length != 1 ) {
-			throw new InterpretError(modifierTypeName+" must have exactly 1 command, "+body.commands.length+" given",
+			throw new InterpretError("modifier definition must have exactly 1 command, "+body.commands.length+" given",
 				body.commands.length == 0 ? body.sLoc : body.commands[1].sLoc );
 		}
 		for( Command cmd : body.commands ) {
 			for( Parameterized p : cmd.getSubjectAndModifiers() ) {
-				ModifierSpec ms = findModifierSpec(predefinedModifiers, p.subject);
-				if( ms == null ) {
-					throw new InterpretError("Unrecognised "+modifierTypeName+": "+p.subject.unquotedText(), p.sLoc);
-				}
+				ModifierSpec ms = predefinedModifiers.get(p.subject);
 				subModifiers.add( ms.bind(this, p.parameters, p.sLoc) );
 			}
 		}
@@ -626,17 +635,13 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 			@Override
 			public Modifier bind(SchemaParser sp, Parameterized[] params, SourceLocation sLoc) throws InterpretError {
 				if( params.length > 0 ) {
-					throw new InterpretError("Custom "+modifierTypeName+" "+name+" takes no parameters", sLoc);
+					throw new InterpretError("Custom "+predefinedModifiers.name+" '"+name+"' takes no parameters", sLoc);
 				}
 				return new FieldModifier() {
 					@Override
 					public void apply( ComplexType classObject, FieldSpec fieldSpec ) {
 						for( Modifier m : subModifiers ) {
-							if( m instanceof FieldModifier ) {
-								((FieldModifier)m).apply(classObject, fieldSpec);
-							} else {
-								m.apply(fieldSpec);
-							}
+							applyFieldModifier( m, classObject, fieldSpec );
 						}
 					}
 					
@@ -660,11 +665,9 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		Phrase cmd = value.subject.subject;
 		if( cmd.words.length >= 2 ) {
 			Phrase typeName = cmd.head(cmd.words.length-1);
-			CommandInterpreter ci;
-			if( (ci = commandInterpreters.get(typeName.unquotedText())) != null ) {
-				if( ci.interpretCommand(value, cmd.words.length-1) ) {
-					return;
-				}
+			CommandInterpreter ci = commandInterpreters.get(typeName);
+			if( ci.interpretCommand(value, cmd.words.length-1) ) {
+				return;
 			}
 		}
 		

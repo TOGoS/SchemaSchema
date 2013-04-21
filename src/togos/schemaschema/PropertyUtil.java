@@ -2,6 +2,7 @@ package togos.schemaschema;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -125,5 +126,20 @@ public class PropertyUtil
 		}
 		for( Object v : values )  return v;
 		return null;
+	}
+	
+	protected static void getAllInheritedValues(SchemaObject subject, Predicate pred, Set<Object> dest) {
+		dest.addAll( getAll(subject.getProperties(), pred) );
+		for( Object parent : getAll(subject.getProperties(), Predicates.EXTENDS) ) {
+			if( parent instanceof SchemaObject ) {
+				getAllInheritedValues( (SchemaObject)parent, pred, dest );
+			}
+		}
+	}
+	
+	public static Set<?> getAllInheritedValues(SchemaObject subject, Predicate pred) {
+		HashSet<Object> dest = new HashSet<Object>();
+		getAllInheritedValues( subject, pred, dest );
+		return dest;
 	}
 }
