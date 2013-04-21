@@ -36,4 +36,13 @@ public class EnumType extends ComplexType
 		}
 		return s;
 	}
+
+	public String[] getValidValueNames() {
+		String[] vv = new String[validValues.size()];
+		int i = 0;
+		for( SchemaObject v : validValues ) {
+			vv[i++] = v.getName();
+		}
+		return vv;
+	}
 }
