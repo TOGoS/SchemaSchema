@@ -104,7 +104,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 							);
 						}
 						referenceBody = fieldCommand.body;
-					} else if( (m = findClassModifierSpec(mod.subject)) != null ) {
+					} else if( (m = classModifiers.get(mod.subject.unquotedText(), ModifierSpec.class)) != null ) {
 						_fieldModifiers.add(m.bind(SchemaParser.this, mod.parameters, mod.sLoc));
 					}
 				}
@@ -247,9 +247,9 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	}
 	
 	class ModifierDefinitionCommandInterpreter extends DefinitionCommandInterpreter {
-		final Map<String,ModifierSpec> registeredModifiers;
+		final SymbolLookupContext<ModifierSpec> registeredModifiers;
 		final String modifierTypeName;
-		public ModifierDefinitionCommandInterpreter( Map<String,ModifierSpec> predefinedModifiers, String modifierTypeName ) {
+		public ModifierDefinitionCommandInterpreter( SymbolLookupContext<ModifierSpec> predefinedModifiers, String modifierTypeName ) {
 			this.registeredModifiers = predefinedModifiers;
 			this.modifierTypeName = modifierTypeName;
 		}
@@ -387,18 +387,45 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	
 	////
 	
-	protected Map<String,Object> things = new HashMap<String,Object>();
-	protected Map<String,Type> types = new HashMap<String,Type>();
-	protected Map<String,Predicate> predicates = new HashMap<String,Predicate>();
-	protected Map<String,ModifierSpec> generalModifiers = new HashMap<String,ModifierSpec>();
-	protected Map<String,ModifierSpec> fieldModifiers = new HashMap<String,ModifierSpec>();
-	protected Map<String,ModifierSpec> classModifiers = new HashMap<String,ModifierSpec>();
-	protected Map<String,CommandInterpreter> commandInterpreters = new HashMap<String,CommandInterpreter>();
+	class SymbolLookupContext<T> {
+		final SymbolLookupContext<? super T> parent;
+		final Map<String,T> values = new HashMap<String,T>();
+		SymbolLookupContext( SymbolLookupContext<? super T> parent ) {
+			this.parent = parent;
+		}
+		public T get(String name, Class<T> requiredType) {
+			SymbolLookupContext<? super T> ctx = this;
+			while( ctx != null ) {
+				Object o = values.get(name);
+				if( o != null ) {
+					if( requiredType.isInstance(o) ) {
+						return requiredType.cast(o);
+					} else {
+						return null;
+					}
+				}
+			}
+			return null;
+		}
+		public void put(String name, T value) {
+			SymbolLookupContext<? super T> ctx = this;
+			while( ctx != null ) {
+				ctx.values.put(name, value);
+			}
+		}
+	}
+	
+	protected SymbolLookupContext<Object> things = new SymbolLookupContext<Object>(null);
+	protected SymbolLookupContext<Type> types = new SymbolLookupContext<Type>(things);
+	protected SymbolLookupContext<Predicate> predicates = new SymbolLookupContext<Predicate>(things);
+	protected SymbolLookupContext<ModifierSpec> generalModifiers = new SymbolLookupContext<ModifierSpec>(null);
+	protected SymbolLookupContext<ModifierSpec> fieldModifiers = new SymbolLookupContext<ModifierSpec>(generalModifiers);
+	protected SymbolLookupContext<ModifierSpec> classModifiers = new SymbolLookupContext<ModifierSpec>(generalModifiers);
+	protected SymbolLookupContext<CommandInterpreter> commandInterpreters = new SymbolLookupContext<CommandInterpreter>(null); 
 	
 	public SchemaParser() { }
 	
 	public void defineType( Type t ) throws Exception {
-		things.put( t.getName(), t );
 		types.put( t.getName(), t );
 		HashMap<Predicate,Set<Object>> appliedProperties = new HashMap<Predicate,Set<Object>>();
 		PropertyUtil.add(appliedProperties, Predicates.OBJECTS_ARE_MEMBERS_OF, t);
@@ -408,13 +435,13 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	
 	boolean allowIsLessModifierShorthand = true;
 	
-	protected void defineModifier( Map<String,ModifierSpec> modifierMap, String name, ModifierSpec spec ) {
+	protected void defineModifier( SymbolLookupContext<ModifierSpec> modifierMap, String name, ModifierSpec spec ) {
 		modifierMap.put( name, spec );
 		if( allowIsLessModifierShorthand ) {
 			if( name.startsWith("is ") ) {
 				String shorthand = name.substring(3);
 				System.err.println("Duplicate '"+name+"' as '"+shorthand+"'");
-				if( modifierMap.containsKey(shorthand) ) { 
+				if( modifierMap.values.containsKey(shorthand) ) { 
 					modifierMap.put( shorthand, spec );
 				}
 			}
@@ -446,23 +473,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	public void defineCommand( String name, CommandInterpreter interpreter ) {
 		commandInterpreters.put( name, interpreter );
 	}
-	
-	private ModifierSpec findModifierSpec(Map<String,ModifierSpec> typeSpecificModifiers, Phrase subject) {
-		String name = subject.unquotedText();
-		ModifierSpec m;
-		if( (m = typeSpecificModifiers.get(name)) != null ) return m;
-		if( (m = generalModifiers.get(name)) != null ) return m;
-		return null;
-	}
-	
-	private ModifierSpec findClassModifierSpec(Phrase subject) {
-		return findModifierSpec( classModifiers, subject );
-	}
-	
-	private ModifierSpec findFieldModifierSpec(Phrase subject) {
-		return findModifierSpec( fieldModifiers, subject );
-	}
-	
+		
 	protected Object evaluate( Object v, Parameterized[] parameters ) throws InterpretError {
 		if( parameters.length > 0 ) {
 			throw new InterpretError("Don't know how to parameterize "+v.getClass(), parameters[0].sLoc);
@@ -596,7 +607,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		return pred;
 	}
 	
-	private ModifierSpec parseModifierSpec(final String name, Parameterized[] modifierModifiers, Block body, Map<String,ModifierSpec> predefinedModifiers, final String modifierTypeName) throws InterpretError {
+	private ModifierSpec parseModifierSpec(final String name, Parameterized[] modifierModifiers, Block body, SymbolLookupContext<ModifierSpec> predefinedModifiers, final String modifierTypeName) throws InterpretError {
 		final ArrayList<Modifier> subModifiers = new ArrayList<Modifier>();
 		if( body.commands.length != 1 ) {
 			throw new InterpretError(modifierTypeName+" must have exactly 1 command, "+body.commands.length+" given",
