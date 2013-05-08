@@ -64,11 +64,10 @@ public class SchemaParserTest extends TestCase
 		
 		ComplexType ot = parseClass( source, "some object" );
 		assertEquals( source, ot.toString() );
-		assertEquals( 2, ot.fieldsByName.size() );
-		assertFieldsNamedProperly( ot.fieldsByName );
+		assertEquals( 2, ot.getFields().size() );
 		
 		{
-			FieldSpec intFieldSpec = ot.fieldsByName.get("int field");
+			FieldSpec intFieldSpec = ot.getField("int field");
 			assertNotNull( intFieldSpec );
 			assertEquals( "int field", intFieldSpec.name );
 			assertPropertyValue( null, intFieldSpec, Predicates.IS_NULLABLE );
@@ -76,7 +75,7 @@ public class SchemaParserTest extends TestCase
 		}
 		
 		{
-			FieldSpec strFieldSpec = ot.fieldsByName.get("str field");
+			FieldSpec strFieldSpec = ot.getField("str field");
 			assertNotNull( strFieldSpec );
 			assertEquals( "str field", strFieldSpec.name );
 			assertFalse( PropertyUtil.isTrue(strFieldSpec.getProperties(), Predicates.IS_NULLABLE) );
@@ -103,9 +102,9 @@ public class SchemaParserTest extends TestCase
 		
 		ComplexType ot = parseClass( source, "some object" );
 		
-		assertEquals( 1, ot.indexesByName.size() );
-		assertTrue( ot.indexesByName.containsKey("primary") );
-		IndexSpec primaryIndex = ot.indexesByName.get("primary");
+		assertEquals( 1, ot.getIndexes().size() );
+		assertTrue( ot.hasIndex("primary") );
+		IndexSpec primaryIndex = ot.getIndex("primary");
 		assertEquals( "primary", primaryIndex.name );
 		assertEquals( 2, primaryIndex.fields.size() );
 	}
@@ -184,8 +183,8 @@ public class SchemaParserTest extends TestCase
 			"}";
 		
 		ComplexType classX = parseClass(source, "X");
-		assertEquals( 1, classX.fieldsByName.size() );
-		for( FieldSpec f : classX.fieldsByName.values() ) {
+		assertEquals( 1, classX.getFields().size() );
+		for( FieldSpec f : classX.getFields() ) {
 			assertEquals( 1, f.getObjectTypes().size() );
 			for( Type t : f.getObjectTypes() ) {
 				assertEquals( "integer", t.getName() );

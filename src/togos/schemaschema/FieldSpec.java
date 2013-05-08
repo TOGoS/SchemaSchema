@@ -14,7 +14,7 @@ public class FieldSpec extends BaseSchemaObject
 	public Set<Type> getObjectTypes() {
 		return PropertyUtil.getAll(properties, Predicates.OBJECTS_ARE_MEMBERS_OF, Type.class);
 	}
-		
+	
 	public String toString() {
 		String s = Phrase.quoteIfNecessary(name);
 		for( Map.Entry<Predicate,Set<Object>> e : properties.entrySet() ) {

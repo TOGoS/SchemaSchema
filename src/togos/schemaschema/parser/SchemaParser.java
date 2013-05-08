@@ -161,7 +161,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 			}
 			
 			if( PropertyUtil.isTrue(t.getProperties(), Predicates.IS_SELF_KEYED) ) {
-				t.indexesByName.put("primary", new IndexSpec("primary", t.fieldsByName.values()));
+				t.addIndex(new IndexSpec("primary", t.getFields()));
 			}
 			
 			CommandInterpreter instanceInterpreter;
@@ -345,10 +345,10 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 				@Override
 				public void apply(ComplexType classObject, FieldSpec fieldSpec) {
 					for( String indexName : indexNames ) {
-						IndexSpec index = classObject.indexesByName.get(indexName);
+						IndexSpec index = classObject.getIndex(indexName);
 						if( index == null ) {
 							index = new IndexSpec(indexName);
-							classObject.indexesByName.put(indexName, index);
+							classObject.addIndex(index);
 						}
 						index.fields.add( fieldSpec );
 					}
@@ -565,7 +565,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		Command fieldCommand
 	) throws InterpretError {
 		String fieldName = singleString(fieldCommand.subject, "field name");
-		if( objectType.fieldsByName.containsKey(fieldName) ) {
+		if( objectType.hasField(fieldName) ) {
 			throw new InterpretError( "Field '"+fieldName+"' already defined", fieldCommand.sLoc );
 		}
 		
@@ -577,7 +577,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 			applyFieldModifier( m, objectType, fieldSpec );
 		}
 		
-		objectType.fieldsByName.put( fieldSpec.name, fieldSpec );
+		objectType.addField( fieldSpec );
 		return fieldSpec;
 	}
 	
@@ -586,7 +586,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		Command fieldCommand
 	) throws InterpretError {
 		String fieldName = singleString(fieldCommand.subject, "field name");
-		FieldSpec fieldSpec = objectType.fieldsByName.get(fieldName);
+		FieldSpec fieldSpec = objectType.getField(fieldName);
 		if( fieldSpec == null ) {
 			fieldSpec = defineSimpleField( objectType, fieldCommand );
 		} else if( fieldCommand.modifiers.length > 0 ) {
