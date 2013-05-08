@@ -51,6 +51,10 @@ public class ComplexType extends BaseSchemaObject implements Type
 		indexesByName.put( indexSpec.name, indexSpec );
 	}
 	
+	public Collection<ForeignKeySpec> getForeignKeys() {
+		return foreignKeysByName.values();
+	}
+	
 	public String toString() {
 		String extendStr = "";
 		Set<Type> parentTypes = getExtendedTypes();
