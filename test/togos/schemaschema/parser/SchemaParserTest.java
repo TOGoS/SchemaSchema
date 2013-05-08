@@ -32,14 +32,14 @@ public class SchemaParserTest extends TestCase
 	
 	protected void assertFieldsNamedProperly( Map<String,FieldSpec> fieldMap ) {
 		for( Map.Entry<String,FieldSpec> e : fieldMap.entrySet() ) {
-			assertEquals( e.getKey(), e.getValue().name );
+			assertEquals( e.getKey(), e.getValue().getName() );
 		}
 	}
 	
 	protected void assertPropertyValue( Object expectedValue, SchemaObject obj, Predicate prop ) {
 		if( expectedValue == null && obj.getProperties().get(prop) == null ) {
 		} else {
-			assertNotNull( prop.name+" should not be null", obj.getProperties().get(prop) );
+			assertNotNull( prop.getName()+" should not be null", obj.getProperties().get(prop) );
 			assertEquals( 1, obj.getProperties().get(prop).size() );
 			for( Object v : obj.getProperties().get(prop) ) {
 				assertEquals( expectedValue, v );
@@ -69,7 +69,7 @@ public class SchemaParserTest extends TestCase
 		{
 			FieldSpec intFieldSpec = ot.getField("int field");
 			assertNotNull( intFieldSpec );
-			assertEquals( "int field", intFieldSpec.name );
+			assertEquals( "int field", intFieldSpec.getName() );
 			assertPropertyValue( null, intFieldSpec, Predicates.IS_NULLABLE );
 			assertPropertyValue( Types.INTEGER, intFieldSpec, Predicates.OBJECTS_ARE_MEMBERS_OF );
 		}
@@ -77,7 +77,7 @@ public class SchemaParserTest extends TestCase
 		{
 			FieldSpec strFieldSpec = ot.getField("str field");
 			assertNotNull( strFieldSpec );
-			assertEquals( "str field", strFieldSpec.name );
+			assertEquals( "str field", strFieldSpec.getName() );
 			assertFalse( PropertyUtil.isTrue(strFieldSpec.getProperties(), Predicates.IS_NULLABLE) );
 			assertPropertyValue( Types.STRING, strFieldSpec, Predicates.OBJECTS_ARE_MEMBERS_OF );
 		}

@@ -6,8 +6,8 @@ import java.util.Set;
 
 public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 {
-	public final String name;
-	public String longName;
+	protected final String name;
+	protected String longName;
 	public final Map<Predicate,Set<Object>> properties = new LinkedHashMap<Predicate,Set<Object>>();
 	
 	public BaseSchemaObject( String name, String longName ) {

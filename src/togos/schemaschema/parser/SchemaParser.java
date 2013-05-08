@@ -234,9 +234,9 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		}
 		
 		protected void definePredicate( Predicate pred ) throws Exception {
-			things.put( pred.name, pred );
-			predicates.put( pred.name, pred );
-			defineModifier( modifierLookupContext, pred.name, new SimplePredicateModifierSpec(pred) );
+			things.put( pred.getName(), pred );
+			predicates.put( pred.getName(), pred );
+			defineModifier( modifierLookupContext, pred.getName(), new SimplePredicateModifierSpec(pred) );
 			_data( pred );
 		}
 		
@@ -464,7 +464,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		types.put( t.getName(), t );
 		HashMap<Predicate,Set<Object>> appliedProperties = new HashMap<Predicate,Set<Object>>();
 		PropertyUtil.add(appliedProperties, Predicates.OBJECTS_ARE_MEMBERS_OF, t);
-		fieldModifiers.put( t.getName(), new AliasModifier(Predicates.OBJECTS_ARE_MEMBERS_OF.name, appliedProperties) );
+		fieldModifiers.put( t.getName(), new AliasModifier(Predicates.OBJECTS_ARE_MEMBERS_OF.getName(), appliedProperties) );
 		_data( t );
 	}
 	
@@ -492,16 +492,16 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	}
 	
 	public void defineFieldPredicate( Predicate pred ) throws Exception {
-		things.put( pred.name, pred );
-		predicates.put( pred.name, pred );
-		defineFieldModifier( pred.name, new SimplePredicateModifierSpec(pred) );
+		things.put( pred.getName(), pred );
+		predicates.put( pred.getName(), pred );
+		defineFieldModifier( pred.getName(), new SimplePredicateModifierSpec(pred) );
 		_data( pred );
 	}
 	
 	public void defineClassPredicate( Predicate pred ) throws Exception {
-		things.put( pred.name, pred );
-		predicates.put( pred.name, pred );
-		defineClassModifier( pred.name, new SimplePredicateModifierSpec(pred) );
+		things.put( pred.getName(), pred );
+		predicates.put( pred.getName(), pred );
+		defineClassModifier( pred.getName(), new SimplePredicateModifierSpec(pred) );
 		_data( pred );
 	}
 	
