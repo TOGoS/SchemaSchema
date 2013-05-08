@@ -2,10 +2,10 @@ package togos.schemaschema;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import togos.lang.SourceLocation;
 import togos.schemaschema.parser.ast.Phrase;
 import togos.schemaschema.parser.ast.Word;
 
@@ -21,8 +21,8 @@ public class ComplexType extends BaseSchemaObject implements Type
 	protected final Map<String,IndexSpec> indexesByName = new LinkedHashMap<String,IndexSpec>();
 	protected final Map<String,ForeignKeySpec> foreignKeysByName = new LinkedHashMap<String,ForeignKeySpec>();
 	
-	public ComplexType( String name ) {
-		super(name);
+	public ComplexType( String name, SourceLocation sLoc ) {
+		super(name, sLoc);
 	}
 	
 	public Collection<FieldSpec> getFields() {

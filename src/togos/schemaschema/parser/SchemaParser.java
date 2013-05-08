@@ -62,12 +62,12 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	}
 	
 	abstract class DefinitionCommandInterpreter implements CommandInterpreter {
-		protected abstract void interpretDefinition( String name, Parameterized[] modifiers, Block body ) throws Exception;
+		protected abstract void interpretDefinition( String name, Parameterized[] modifiers, Block body, SourceLocation sLoc ) throws Exception;
 		
 		@Override public boolean interpretCommand( Command cmd, int cmdPrefixLength ) throws Exception {
 			ensureNoParameters(cmd.subject, "symbol being defined");
 			Phrase cmdPhrase = cmd.subject.subject;
-			interpretDefinition( cmdPhrase.tail(cmdPrefixLength).unquotedText(), cmd.modifiers, cmd.body );
+			interpretDefinition( cmdPhrase.tail(cmdPrefixLength).unquotedText(), cmd.modifiers, cmd.body, cmd.sLoc );
 			return true;
 		}
 	}
@@ -81,8 +81,8 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 			this(null);
 		}
 		
-		public ComplexType parseClass( String name, Parameterized[] modifiers, Block body ) throws InterpretError {
-			ComplexType t = new ComplexType( name );
+		public ComplexType parseClass( String name, Parameterized[] modifiers, Block body, SourceLocation sLoc ) throws InterpretError {
+			ComplexType t = new ComplexType( name, sLoc );
 			if( metaClass != null ) PropertyUtil.add( t.properties, Predicates.IS_MEMBER_OF, metaClass );
 			
 			for( Command fieldCommand : body.commands ) {
@@ -179,14 +179,14 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 			return t;
 		}
 
-		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body ) throws Exception {
-			defineType( parseClass( name, modifiers, body ) );
+		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body, SourceLocation sLoc ) throws Exception {
+			defineType( parseClass( name, modifiers, body, sLoc ) );
 		}
 	}
 	
 	class EnumDefinitionCommandInterpreter extends DefinitionCommandInterpreter {
-		private EnumType parseEnum( String name, Parameterized[] modifiers, Block body ) throws InterpretError {
-			EnumType t = new EnumType(name);
+		private EnumType parseEnum( String name, Parameterized[] modifiers, Block body, SourceLocation sLoc ) throws InterpretError {
+			EnumType t = new EnumType(name, sLoc);
 			
 			for( Parameterized mod : modifiers ) {
 				ModifierSpec m = classModifiers.get(mod.subject);
@@ -202,14 +202,14 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 					throw new InterpretError("Enum value body is ignored", c.body.sLoc);
 				}
 				
-				t.addValidValue(c.subject.subject.unquotedText());
+				t.addValidValue(c.subject.subject.unquotedText(), c.sLoc);
 			}
 			
 			return t;
 		}
 		
-		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body ) throws Exception {
-			defineType( parseEnum( name, modifiers, body ) );
+		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body, SourceLocation sLoc ) throws Exception {
+			defineType( parseEnum( name, modifiers, body, sLoc ) );
 		}
 	}
 	
@@ -221,8 +221,8 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 			_data( obj );
 		}
 		
-		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body ) throws Exception {
-			defineObject( parseObject( name, modifiers, body ) );
+		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body, SourceLocation sLoc ) throws Exception {
+			defineObject( parseObject( name, modifiers, body, sLoc ) );
 		}
 	}
 	
@@ -240,8 +240,8 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 			_data( pred );
 		}
 		
-		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body ) throws Exception {
-			definePredicate( parseProperty( name, modifiers, body ) );
+		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body, SourceLocation sLoc ) throws Exception {
+			definePredicate( parseProperty( name, modifiers, body, sLoc ) );
 		}
 	}
 	
@@ -251,7 +251,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 			this.registeredModifiers = predefinedModifiers;
 		}
 		
-		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body ) throws Exception {
+		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body, SourceLocation sLoc ) throws Exception {
 			defineModifier( registeredModifiers, name, parseModifierSpec(name, modifiers, body, registeredModifiers) );
 		}
 	}
@@ -278,9 +278,9 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		}
 		
 		@Override public Modifier bind(SchemaParser sp, Parameterized[] params, SourceLocation sLoc) throws InterpretError {
-			final Set<Object> values = new LinkedHashSet<Object>();
+			final Set<SchemaObject> values = new LinkedHashSet<SchemaObject>();
 			if( params.length == 0 ) {
-				values.add( Boolean.TRUE );
+				values.add( BaseSchemaObject.forScalar(Boolean.TRUE, sLoc) );
 			} else {
 				for( Parameterized p : params ) {
 					values.add( sp.evaluate( predicate, p ) );
@@ -298,9 +298,9 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	/** Modifier that is equivalent to a set of property -> value pairs */
 	public static class AliasModifier implements Modifier, ModifierSpec {
 		final String name;
-		final Map<Predicate,Set<Object>> propertyValues;
+		final Map<Predicate,Set<SchemaObject>> propertyValues;
 		
-		public AliasModifier( String name, Map<Predicate,Set<Object>> propertyValues ) {
+		public AliasModifier( String name, Map<Predicate,Set<SchemaObject>> propertyValues ) {
 			this.name = name;
 			this.propertyValues = propertyValues;
 		}
@@ -367,19 +367,18 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		}
 		
 		@Override
-		public Modifier bind(SchemaParser sp, Parameterized[] params, SourceLocation sLoc) throws InterpretError {
-			final LinkedHashSet<String> valueNames = new LinkedHashSet<String>(); 
+		public Modifier bind(SchemaParser sp, final Parameterized[] params, final SourceLocation sLoc) throws InterpretError {
 			for( Parameterized p : params ) {
 				for( Parameterized pp : p.parameters ) {
 					throw new InterpretError( "Enum values cannot themselves take parameters", pp.sLoc);
 				}
-				valueNames.add(p.subject.unquotedText());
 			}
-			
 			return new Modifier() {
 				@Override public void apply(SchemaObject subject) {
-					EnumType er = new EnumType(subject.getName());
-					for( String valueName : valueNames ) er.addValidValue(valueName);
+					EnumType er = new EnumType(subject.getName(), sLoc);
+					for( Parameterized p : params ) {
+						er.addValidValue(p.subject.unquotedText(), p.subject.sLoc);
+					}
 					PropertyUtil.add( subject.getProperties(), pred, er );
 				}
 			};
@@ -450,7 +449,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		}
 	}
 	
-	protected SymbolLookupContext<Object> things = new SymbolLookupContext<Object>(null, "thing", Object.class);
+	protected SymbolLookupContext<SchemaObject> things = new SymbolLookupContext<SchemaObject>(null, "thing", SchemaObject.class);
 	protected SymbolLookupContext<Type> types = new SymbolLookupContext<Type>(things, "type", Type.class);
 	protected SymbolLookupContext<Predicate> predicates = new SymbolLookupContext<Predicate>(things, "predicate", Predicate.class);
 	protected SymbolLookupContext<ModifierSpec> generalModifiers = new SymbolLookupContext<ModifierSpec>(null, "general modifier", ModifierSpec.class);
@@ -462,7 +461,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	
 	public void defineType( Type t ) throws Exception {
 		types.put( t.getName(), t );
-		HashMap<Predicate,Set<Object>> appliedProperties = new HashMap<Predicate,Set<Object>>();
+		HashMap<Predicate,Set<SchemaObject>> appliedProperties = new HashMap<Predicate,Set<SchemaObject>>();
 		PropertyUtil.add(appliedProperties, Predicates.OBJECTS_ARE_MEMBERS_OF, t);
 		fieldModifiers.put( t.getName(), new AliasModifier(Predicates.OBJECTS_ARE_MEMBERS_OF.getName(), appliedProperties) );
 		_data( t );
@@ -509,7 +508,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		commandInterpreters.put( name, interpreter );
 	}
 		
-	protected Object evaluate( Object v, Parameterized[] parameters ) throws InterpretError {
+	protected SchemaObject evaluate( SchemaObject v, Parameterized[] parameters ) throws InterpretError {
 		if( parameters.length > 0 ) {
 			throw new InterpretError("Don't know how to parameterize "+v.getClass(), parameters[0].sLoc);
 		}
@@ -522,14 +521,14 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	 * @return
 	 * @throws InterpretError
 	 */
-	protected Object evaluate( Predicate context, Parameterized p ) throws InterpretError {
+	protected SchemaObject evaluate( Predicate context, Parameterized p ) throws InterpretError {
 		if( p.subject.words.length == 1 && p.subject.words[0].quoting == Token.Type.DOUBLE_QUOTED_STRING ) {
-			return p.subject.unquotedText();
+			return BaseSchemaObject.forScalar(p.subject.unquotedText(), p.subject.sLoc);
 		}
 		// TODO: Parse number literals
 		
 		String name = p.subject.unquotedText();
-		Set<Object> possibleValues = new LinkedHashSet<Object>();
+		Set<SchemaObject> possibleValues = new LinkedHashSet<SchemaObject>();
 		if( context != null ) {
 			for( Type t : context.getObjectTypes() ) {
 				if( t instanceof EnumType ) {
@@ -543,7 +542,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		}
 		
 		if( possibleValues.size() == 0 ) {
-			Object v = things.get(p.subject);
+			SchemaObject v = things.get(p.subject);
 			if( v != null ) possibleValues.add( v );
 		}
 		
@@ -553,7 +552,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 			// TODO: list definition locations
 			throw new InterpretError("Symbol "+Word.quote(name)+" is ambiguous", p.subject.sLoc);
 		} else {
-			for( Object v : possibleValues ) {
+			for( SchemaObject v : possibleValues ) {
 				return evaluate( v, p.parameters );
 			}
 			throw new RuntimeException("Somehow foreach body wasn't evaluated for single-item set");
@@ -569,7 +568,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 			throw new InterpretError( "Field '"+fieldName+"' already defined", fieldCommand.sLoc );
 		}
 		
-		FieldSpec fieldSpec = new FieldSpec( fieldName );
+		FieldSpec fieldSpec = new FieldSpec( fieldName, fieldCommand.sLoc );
 		
 		for( Parameterized modifier : fieldCommand.modifiers ) {
 			ModifierSpec ms = fieldModifiers.get(modifier.subject);
@@ -595,8 +594,8 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		return fieldSpec;
 	}
 	
-	protected SchemaObject parseObject( String name, Parameterized[] modifiers, Block body ) throws InterpretError {
-		BaseSchemaObject obj = new BaseSchemaObject( name );
+	protected SchemaObject parseObject( String name, Parameterized[] modifiers, Block body, SourceLocation sLoc ) throws InterpretError {
+		BaseSchemaObject obj = new BaseSchemaObject( name, sLoc );
 		for( Parameterized p : modifiers ) {
 			ModifierSpec ms = generalModifiers.get(p.subject);
 			ms.bind(this, p.parameters, p.sLoc).apply(obj);
@@ -607,8 +606,8 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		return obj;
 	}
 	
-	protected Predicate parseProperty( String name, Parameterized[] modifiers, Block body ) throws InterpretError {
-		Predicate pred = new Predicate(name);
+	protected Predicate parseProperty( String name, Parameterized[] modifiers, Block body, SourceLocation sLoc ) throws InterpretError {
+		Predicate pred = new Predicate(name, sLoc);
 		for( Parameterized p : modifiers ) {
 			ModifierSpec ms = fieldModifiers.get(p.subject);
 			ms.bind(this, p.parameters, p.sLoc).apply(pred);

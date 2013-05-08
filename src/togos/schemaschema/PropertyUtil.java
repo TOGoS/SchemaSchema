@@ -11,25 +11,25 @@ public class PropertyUtil
 {
 	//// Modify proprety lists
 	
-	public static void addAll( Map<Predicate,Set<Object>> dest, Predicate key, Collection<?> values ) {
+	public static <V> void addAll( Map<Predicate,Set<V>> dest, Predicate key, Collection<? extends V> values ) {
 		if( values.size() == 0 ) return;
 		
-		Set<Object> vs = dest.get(key);
-		if( vs == null ) dest.put(key, vs = new LinkedHashSet<Object>() );
+		Set<V> vs = dest.get(key);
+		if( vs == null ) dest.put(key, vs = new LinkedHashSet<V>() );
 		vs.addAll( values );
 	}
 	
-	public static void addAll( Map<Predicate,Set<Object>> dest, Map<? extends Predicate,? extends Set<? extends Object>> source ) {
-		for( Map.Entry<? extends Predicate,? extends Set<? extends Object>> e : source.entrySet() ) {
-			Set<Object> vs = dest.get(e.getKey());
-			if( vs == null ) dest.put(e.getKey(), vs = new LinkedHashSet<Object>() );
+	public static <V> void addAll( Map<Predicate,Set<V>> dest, Map<? extends Predicate,? extends Set<? extends V>> source ) {
+		for( Map.Entry<? extends Predicate,? extends Set<? extends V>> e : source.entrySet() ) {
+			Set<V> vs = dest.get(e.getKey());
+			if( vs == null ) dest.put(e.getKey(), vs = new LinkedHashSet<V>() );
 			vs.addAll( e.getValue() );
 		}
 	}
 	
-	public static void add( Map<Predicate,Set<Object>> dest, Predicate key, Object value ) {
-		Set<Object> vs = dest.get(key);
-		if( vs == null ) dest.put(key, vs = new LinkedHashSet<Object>() );
+	public static <V> void add( Map<Predicate,Set<V>> dest, Predicate key, V value ) {
+		Set<V> vs = dest.get(key);
+		if( vs == null ) dest.put(key, vs = new LinkedHashSet<V>() );
 		vs.add( value );
 	}
 	
@@ -119,13 +119,17 @@ public class PropertyUtil
 		return Collections.emptySet();
 	}
 	
-	public static Object getFirstInheritedValue( SchemaObject obj, Predicate pred ) {
+	public static Object getFirstInheritedValue( SchemaObject obj, Predicate pred, Object defaultValue ) {
 		Set<?> values = getFirstInheritedValues(obj, pred);
 		if( values.size() > 1 ) {
 			throw new RuntimeException( obj.getName()+" has more than one value for "+pred);
 		}
 		for( Object v : values )  return v;
-		return null;
+		return defaultValue;
+	}
+	
+	public static Object getFirstInheritedValue( SchemaObject obj, Predicate pred ) {
+		return getFirstInheritedValue( obj, pred, null );
 	}
 	
 	protected static void getAllInheritedValues(SchemaObject subject, Predicate pred, Set<Object> dest) {

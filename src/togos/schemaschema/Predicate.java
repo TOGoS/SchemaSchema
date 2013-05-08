@@ -2,20 +2,21 @@ package togos.schemaschema;
 
 import java.util.Set;
 
+import togos.lang.SourceLocation;
 import togos.schemaschema.parser.ast.Word;
 
 public class Predicate extends BaseSchemaObject
 {
-	public Predicate(String name) {
-		super(name);
+	public Predicate(String name, SourceLocation sLoc) {
+		super(name, sLoc);
 	}
 
-	public Predicate(String name, String longName) {
-		super(name, longName);
+	public Predicate(String name, String longName, SourceLocation sLoc) {
+		super(name, longName, sLoc);
 	}
 
-	public Predicate(String name, String longName, Type objectType) {
-		super(name, longName);
+	public Predicate(String name, String longName, Type objectType, SourceLocation sLoc) {
+		super(name, longName, sLoc);
 		this.addObjectType(objectType);
 	}
 	

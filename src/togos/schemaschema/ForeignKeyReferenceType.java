@@ -2,14 +2,16 @@ package togos.schemaschema;
 
 import java.util.Set;
 
+import togos.lang.SourceLocation;
+
 
 class ForeignKeyReferenceType extends BaseSchemaObject implements Type
 {
 	protected final Type parentType;
 	public final ForeignKeySpec keySpec;
 	
-	public ForeignKeyReferenceType( String name, Type parentType, ForeignKeySpec keySpec ) {
-		super(name);
+	public ForeignKeyReferenceType( String name, Type parentType, ForeignKeySpec keySpec, SourceLocation sLoc ) {
+		super(name, sLoc);
 		this.parentType = parentType;
 		this.keySpec = keySpec;
 	}

@@ -1,7 +1,7 @@
 package togos.schemaschema.parser;
 
-import togos.lang.BaseSourceLocation;
 import junit.framework.TestCase;
+import togos.lang.BaseSourceLocation;
 
 public class ParserTest extends TestCase
 {
