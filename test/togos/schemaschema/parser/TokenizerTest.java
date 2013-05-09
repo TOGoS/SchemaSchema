@@ -1,8 +1,8 @@
 package togos.schemaschema.parser;
 
 import junit.framework.TestCase;
+import togos.asyncstream.Collector;
 import togos.lang.ParseError;
-import togos.schemaschema.parser.asyncstream.Collector;
 
 public class TokenizerTest extends TestCase
 {

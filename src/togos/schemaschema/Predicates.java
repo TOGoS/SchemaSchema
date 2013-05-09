@@ -16,4 +16,5 @@ public class Predicates
 	public static final Predicate EXTENDS = new Predicate("extends", RDFS_NS+"subClassOf", SLOC);
 	/** Applicable to variables/fields/predicates that may contain/map to a null value */
 	public static final Predicate IS_NULLABLE = new Predicate("is nullable", SLOC);
+	public static final Predicate IS_ENUM_TYPE = new Predicate("is enum type", SLOC);
 }

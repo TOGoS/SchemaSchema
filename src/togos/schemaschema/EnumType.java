@@ -3,15 +3,19 @@ package togos.schemaschema;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
+import togos.lang.BaseSourceLocation;
 import togos.lang.SourceLocation;
 import togos.schemaschema.parser.ast.Word;
 
 public class EnumType extends ComplexType
 {
+	private static final SourceLocation SLOC = new BaseSourceLocation(EnumType.class.getName(), 0, 0);
+	
 	public final Set<SchemaObject> validValues = new LinkedHashSet<SchemaObject>();
 	
 	public EnumType( String name, SourceLocation sLoc ) {
 		super(name, sLoc);
+		PropertyUtil.add(this.getProperties(), Predicates.IS_ENUM_TYPE, BaseSchemaObject.forScalar(Boolean.TRUE, SLOC));
 	}
 	
 	public Set<SchemaObject> getValidValues() {
@@ -22,8 +26,10 @@ public class EnumType extends ComplexType
 		validValues.add( v );
 	}
 	
-	public void addValidValue(String name, SourceLocation sLoc) {
-		addValidValue( new BaseSchemaObject(name, this, sLoc) );
+	public SchemaObject addValidValue(String name, SourceLocation sLoc) {
+		BaseSchemaObject obj = new BaseSchemaObject(name, this, sLoc);
+		addValidValue( obj );
+		return obj;
 	}
 	
 	public String toString() {

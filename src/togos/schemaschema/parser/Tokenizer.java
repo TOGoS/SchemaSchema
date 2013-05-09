@@ -2,12 +2,12 @@ package togos.schemaschema.parser;
 
 import java.io.InputStreamReader;
 
+import togos.asyncstream.BaseStreamSource;
+import togos.asyncstream.StreamDestination;
+import togos.asyncstream.StreamUtil;
 import togos.lang.BaseSourceLocation;
 import togos.lang.ParseError;
 import togos.lang.SourceLocation;
-import togos.schemaschema.parser.asyncstream.BaseStreamSource;
-import togos.schemaschema.parser.asyncstream.StreamDestination;
-import togos.schemaschema.parser.asyncstream.StreamUtil;
 
 public class Tokenizer extends BaseStreamSource<Token> implements StreamDestination<char[]>
 {

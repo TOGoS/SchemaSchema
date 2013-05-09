@@ -1,5 +1,7 @@
 package togos.schemaschema.parser;
 
+import static togos.schemaschema.PropertyUtil.isTrue;
+
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.Reader;
@@ -10,6 +12,9 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
+import togos.asyncstream.BaseStreamSource;
+import togos.asyncstream.StreamDestination;
+import togos.asyncstream.StreamUtil;
 import togos.lang.BaseSourceLocation;
 import togos.lang.InterpretError;
 import togos.lang.SourceLocation;
@@ -30,9 +35,6 @@ import togos.schemaschema.parser.ast.Command;
 import togos.schemaschema.parser.ast.Parameterized;
 import togos.schemaschema.parser.ast.Phrase;
 import togos.schemaschema.parser.ast.Word;
-import togos.schemaschema.parser.asyncstream.BaseStreamSource;
-import togos.schemaschema.parser.asyncstream.StreamDestination;
-import togos.schemaschema.parser.asyncstream.StreamUtil;
 
 public class SchemaParser extends BaseStreamSource<SchemaObject> implements StreamDestination<Command>
 {
@@ -160,12 +162,12 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 				m.bind(SchemaParser.this, mod.parameters, mod.sLoc).apply(t);
 			}
 			
-			if( PropertyUtil.isTrue(t.getProperties(), Predicates.IS_SELF_KEYED) ) {
+			if( isTrue(t, Predicates.IS_SELF_KEYED) ) {
 				t.addIndex(new IndexSpec("primary", t.getFields()));
 			}
 			
 			CommandInterpreter instanceInterpreter;
-			if( PropertyUtil.getFirstInheritedValue(t, Predicates.EXTENDS) == Types.CLASS ) {
+			if( PropertyUtil.getFirstInheritedValue(t, Predicates.EXTENDS, (SchemaObject)null) == Types.CLASS ) {
 				// If the defined class extends class, then instances will themselves be classes
 				// and can use ClassDefinitionCommandInterpreter
 				instanceInterpreter = new ClassDefinitionCommandInterpreter( t );
@@ -189,20 +191,19 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 			EnumType t = new EnumType(name, sLoc);
 			
 			for( Parameterized mod : modifiers ) {
-				ModifierSpec m = classModifiers.get(mod.subject);
-				m.bind(SchemaParser.this, mod.parameters, mod.sLoc).apply(t);
+				classModifiers.get(mod.subject).bind(SchemaParser.this, mod.parameters, mod.sLoc).apply(t);
 			}
 			
 			for( Command c : body.commands ) {
 				ensureNoParameters(c.subject, "enum value");
-				for( Parameterized mod : c.modifiers ) {
-					throw new InterpretError("Enum value modifiers are ignored", mod.sLoc);
-				}
 				if( c.body.commands.length > 0 ) {
 					throw new InterpretError("Enum value body is ignored", c.body.sLoc);
 				}
 				
-				t.addValidValue(c.subject.subject.unquotedText(), c.sLoc);
+				SchemaObject obj = t.addValidValue(c.subject.subject.unquotedText(), c.sLoc);
+				for( Parameterized mod : c.modifiers ) {
+					generalModifiers.get(mod.subject).bind(SchemaParser.this, mod.parameters, mod.sLoc).apply(obj);
+				}
 			}
 			
 			return t;
@@ -412,7 +413,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		public T get(String name, Class<T> requiredType, boolean throwOnNotFound, boolean throwOnWrongType, SourceLocation refLoc) throws InterpretError {
 			SymbolLookupContext<? super T> ctx = this;
 			while( ctx != null ) {
-				Object o = values.get(name);
+				Object o = ctx.values.get(name);
 				if( o != null ) {
 					if( requiredType.isInstance(o) ) {
 						return requiredType.cast(o);
@@ -471,13 +472,11 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	
 	protected void defineModifier( SymbolLookupContext<ModifierSpec> modifierMap, String name, ModifierSpec spec ) {
 		modifierMap.put( name, spec );
-		if( allowIsLessModifierShorthand ) {
-			if( name.startsWith("is ") ) {
-				String shorthand = name.substring(3);
-				//System.err.println("Duplicate '"+name+"' as '"+shorthand+"'");
-				if( !modifierMap.values.containsKey(shorthand) ) { 
-					modifierMap.put( shorthand, spec );
-				}
+		if( allowIsLessModifierShorthand && name.startsWith("is ") ) {
+			String shorthand = name.substring(3);
+			//System.err.println("Duplicate '"+name+"' as '"+shorthand+"'");
+			if( !modifierMap.values.containsKey(shorthand) ) { 
+				modifierMap.put( shorthand, spec );
 			}
 		}
 	}
@@ -501,6 +500,13 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		things.put( pred.getName(), pred );
 		predicates.put( pred.getName(), pred );
 		defineClassModifier( pred.getName(), new SimplePredicateModifierSpec(pred) );
+		_data( pred );
+	}
+	
+	public void defineGenericPredicate( Predicate pred ) throws Exception {
+		things.put( pred.getName(), pred );
+		predicates.put( pred.getName(), pred );
+		defineModifier( generalModifiers, pred.getName(), new SimplePredicateModifierSpec(pred) );
 		_data( pred );
 	}
 	

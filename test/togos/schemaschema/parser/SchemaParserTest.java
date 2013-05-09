@@ -1,5 +1,7 @@
 package togos.schemaschema.parser;
 
+import static togos.schemaschema.PropertyUtil.isTrue;
+
 import java.util.Map;
 
 import junit.framework.TestCase;
@@ -78,7 +80,7 @@ public class SchemaParserTest extends TestCase
 			FieldSpec strFieldSpec = ot.getField("str field");
 			assertNotNull( strFieldSpec );
 			assertEquals( "str field", strFieldSpec.getName() );
-			assertFalse( PropertyUtil.isTrue(strFieldSpec.getProperties(), Predicates.IS_NULLABLE) );
+			assertFalse( isTrue(strFieldSpec, Predicates.IS_NULLABLE) );
 			assertPropertyValue( Types.STRING, strFieldSpec, Predicates.OBJECTS_ARE_MEMBERS_OF );
 		}
 	}

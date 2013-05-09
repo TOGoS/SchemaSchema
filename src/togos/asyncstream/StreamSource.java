@@ -1,4 +1,4 @@
-package togos.schemaschema.parser.asyncstream;
+package togos.asyncstream;
 
 public interface StreamSource<T>
 {

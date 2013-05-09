@@ -1,4 +1,4 @@
-package togos.schemaschema.parser.asyncstream;
+package togos.asyncstream;
 
 import java.util.ArrayList;
 import java.util.Collection;

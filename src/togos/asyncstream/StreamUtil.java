@@ -1,4 +1,4 @@
-package togos.schemaschema.parser.asyncstream;
+package togos.asyncstream;
 
 import java.io.InputStream;
 import java.io.Reader;

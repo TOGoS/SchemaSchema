@@ -28,6 +28,8 @@ public class PropertyUtil
 	}
 	
 	public static <V> void add( Map<Predicate,Set<V>> dest, Predicate key, V value ) {
+		assert key != null;
+		assert value != null;
 		Set<V> vs = dest.get(key);
 		if( vs == null ) dest.put(key, vs = new LinkedHashSet<V>() );
 		vs.add( value );
@@ -45,8 +47,17 @@ public class PropertyUtil
 		return vs != null && vs.contains(value);
 	}
 	
-	public static boolean isTrue( Map<Predicate,? extends Set<?>> properties, Predicate key ) {
-		return hasValue( properties, key, Boolean.TRUE );
+	public static <V> V toScalar( SchemaObject obj, Class<V> vClass ) {
+		return vClass.cast(obj.getScalarValue());
+	}
+	
+	public static boolean isTrue( SchemaObject obj ) {
+		if( obj == null ) return false;
+		return toScalar( obj, Boolean.class ).booleanValue();
+	}
+	
+	public static boolean isTrue( SchemaObject obj, Predicate pred ) {
+		return getFirstInheritedBoolean(obj, pred, false);
 	}
 	
 	public static boolean isMemberOf( SchemaObject obj, Type t ) {
@@ -57,8 +68,8 @@ public class PropertyUtil
 		return false;
 	}
 	
-	public static Set<?> getAll(Map<Predicate, ? extends Set<?>> properties, Predicate key ) {
-		Set<?> values = properties.get( key );
+	public static <V> Set<V> getAll(Map<Predicate, ? extends Set<V>> properties, Predicate key ) {
+		Set<V> values = properties.get( key );
 		if( values == null || values.size() == 0 ) return Collections.emptySet();
 		return values;
 	}
@@ -96,9 +107,28 @@ public class PropertyUtil
 		}
 	}
 	
-	public static Set<?> getFirstInheritedValues( SchemaObject obj, Predicate pred ) {
+	protected static void getAllInheritedValues(SchemaObject subject, Predicate pred, Set<SchemaObject> dest) {
+		dest.addAll( getAll(subject.getProperties(), pred) );
+		for( Object parent : getAll(subject.getProperties(), Predicates.EXTENDS) ) {
+			if( parent instanceof SchemaObject ) {
+				getAllInheritedValues( (SchemaObject)parent, pred, dest );
+			}
+		}
+	}
+	
+	public static Set<SchemaObject> getAllInheritedValues(SchemaObject subject, Predicate pred) {
+		HashSet<SchemaObject> dest = new HashSet<SchemaObject>();
+		getAllInheritedValues( subject, pred, dest );
+		return dest;
+	}
+	
+	/**
+	 * Walk up the inheritance tree (an exception will be thrown if there is a fork)
+	 * and return the first set of values found for pred. 
+	 */
+	public static Set<SchemaObject> getFirstInheritedValues( SchemaObject obj, Predicate pred ) {
 		while( obj != null ) {
-			Set<?> values = PropertyUtil.getAll(obj.getProperties(), pred);
+			Set<SchemaObject> values = PropertyUtil.getAll(obj.getProperties(), pred);
 			if( values.size() > 0 ) return values;
 			
 			Set<?> extended = PropertyUtil.getAll(obj.getProperties(), Predicates.EXTENDS);
@@ -119,31 +149,54 @@ public class PropertyUtil
 		return Collections.emptySet();
 	}
 	
-	public static Object getFirstInheritedValue( SchemaObject obj, Predicate pred, Object defaultValue ) {
-		Set<?> values = getFirstInheritedValues(obj, pred);
+	/*
+	 * In general, methods to find a single value will throw an exeption unless they find exactly one value.
+	 * If the method takes a defaultValue, that will be returned instead of throwing an exception.
+	 */
+	
+	public static SchemaObject getFirstInheritedValue( SchemaObject obj, Predicate pred, SchemaObject defaultValue ) {
+		Set<SchemaObject> values = getFirstInheritedValues(obj, pred);
 		if( values.size() > 1 ) {
 			throw new RuntimeException( obj.getName()+" has more than one value for "+pred);
 		}
-		for( Object v : values )  return v;
+		for( SchemaObject v : values )  return v;
 		return defaultValue;
 	}
 	
-	public static Object getFirstInheritedValue( SchemaObject obj, Predicate pred ) {
-		return getFirstInheritedValue( obj, pred, null );
-	}
-	
-	protected static void getAllInheritedValues(SchemaObject subject, Predicate pred, Set<Object> dest) {
-		dest.addAll( getAll(subject.getProperties(), pred) );
-		for( Object parent : getAll(subject.getProperties(), Predicates.EXTENDS) ) {
-			if( parent instanceof SchemaObject ) {
-				getAllInheritedValues( (SchemaObject)parent, pred, dest );
-			}
+	public static SchemaObject getFirstInheritedValue( SchemaObject obj, Predicate pred ) {
+		SchemaObject val = getFirstInheritedValue( obj, pred, (SchemaObject)null );
+		if( val == null ) {
+			throw new RuntimeException("No value found for "+pred+" on "+obj.getName());
 		}
+		return val;
+	}
+
+	public static <V> V getFirstInheritedValue( SchemaObject obj, Predicate pred, Class<V> scalarValueClass ) {
+		return toScalar( getFirstInheritedValue( obj, pred ), scalarValueClass );
 	}
 	
-	public static Set<?> getAllInheritedValues(SchemaObject subject, Predicate pred) {
-		HashSet<Object> dest = new HashSet<Object>();
-		getAllInheritedValues( subject, pred, dest );
-		return dest;
+	public static <V> V getFirstInheritedValue( SchemaObject obj, Predicate pred, Class<V> scalarValueClass, V defaultValue ) {
+		SchemaObject val = getFirstInheritedValue( obj, pred, (SchemaObject)null );  
+		return val == null ? defaultValue : toScalar( val, scalarValueClass );
+	}
+	
+	public static boolean getFirstInheritedBoolean( SchemaObject obj, Predicate pred ) {
+		return toScalar( getFirstInheritedValue( obj, pred ), Boolean.class ).booleanValue();
+	}
+	
+	public static boolean getFirstInheritedBoolean( SchemaObject obj, Predicate pred, boolean defaultValue ) {
+		Boolean val = getFirstInheritedValue(obj, pred, Boolean.class, null);
+		return val == null ? defaultValue : val.booleanValue();
+	}
+	
+	public static SchemaObject getType( SchemaObject obj ) {
+		return getFirstInheritedValue( obj, Predicates.IS_MEMBER_OF, Types.OBJECT );
+	}
+	
+	public static boolean isMemberOfClassWith( SchemaObject obj, Predicate classPred ) {
+		for( SchemaObject clash : getAllInheritedValues( obj, Predicates.IS_MEMBER_OF ) ) {
+			if( isTrue(clash, classPred) ) return true;
+		}
+		return false;
 	}
 }

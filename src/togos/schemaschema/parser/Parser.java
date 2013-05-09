@@ -3,6 +3,9 @@ package togos.schemaschema.parser;
 import java.util.ArrayList;
 import java.util.List;
 
+import togos.asyncstream.BaseStreamSource;
+import togos.asyncstream.Collector;
+import togos.asyncstream.StreamDestination;
 import togos.lang.BaseSourceLocation;
 import togos.lang.ParseError;
 import togos.lang.SourceLocation;
@@ -12,9 +15,6 @@ import togos.schemaschema.parser.ast.Command;
 import togos.schemaschema.parser.ast.Parameterized;
 import togos.schemaschema.parser.ast.Phrase;
 import togos.schemaschema.parser.ast.Word;
-import togos.schemaschema.parser.asyncstream.BaseStreamSource;
-import togos.schemaschema.parser.asyncstream.Collector;
-import togos.schemaschema.parser.asyncstream.StreamDestination;
 
 @SuppressWarnings("incomplete-switch")
 public class Parser extends BaseStreamSource<Command> implements StreamDestination<Token>

@@ -6,8 +6,8 @@ import java.util.Collections;
 public class ForeignKeySpec
 {
 	public final static class Component {
-		final FieldSpec targetField;
-		final FieldSpec localField;
+		public final FieldSpec targetField;
+		public final FieldSpec localField;
 		
 		Component( FieldSpec targetField, FieldSpec localField ) {
 			this.targetField = targetField;
@@ -17,8 +17,8 @@ public class ForeignKeySpec
 		public String toString() { return targetField + " = " + localField; }
 	}
 	
-	final ComplexType target;
-	final Collection<Component> components;
+	public final ComplexType target;
+	public final Collection<Component> components;
 	
 	ForeignKeySpec( ComplexType target, Collection<Component> components ) {
 		this.target = target;

@@ -1,4 +1,4 @@
-package togos.schemaschema.parser.asyncstream;
+package togos.asyncstream;
 
 import java.util.ArrayList;
 
@@ -25,5 +25,12 @@ public class BaseStreamSource<T> implements StreamSource<T>
 	/** Default implementation for StreamDestination<?> */
 	public void end() throws Exception {
 		_end();
+	}
+	
+	protected StreamDestination<T> asDestination() {
+		return new StreamDestination<T>() {
+			@Override public void data(T value) throws Exception { _data(value); }
+			@Override public void end() throws Exception { _end(); }
+		};
 	}
 }

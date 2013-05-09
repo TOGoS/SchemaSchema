@@ -1,4 +1,4 @@
-package togos.schemaschema.parser.asyncstream;
+package togos.asyncstream;
 
 public class StreamFork<T> extends BaseStreamSource<T> implements StreamDestination<T>
 {
