@@ -775,7 +775,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 		p.pipe(this);
 		t.pipe(p);
 		try {
-			StreamUtil.pipe( r, t );
+			StreamUtil.pipe( r, t, true );
 		} catch( InterpretError e ) {
 			throw e;
 		} catch( Exception e ) {

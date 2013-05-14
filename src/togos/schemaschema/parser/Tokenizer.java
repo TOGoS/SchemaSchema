@@ -230,6 +230,6 @@ public class Tokenizer extends BaseStreamSource<Token> implements StreamDestinat
             public void end() throws Exception {
             }
 		});
-		StreamUtil.pipe( new InputStreamReader(System.in), t );
+		StreamUtil.pipe( new InputStreamReader(System.in), t, true );
 	}
 }
