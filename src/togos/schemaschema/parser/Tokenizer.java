@@ -38,6 +38,7 @@ public class Tokenizer extends BaseStreamSource<Token> implements StreamDestinat
 	
 	public String filename = "unknown source";
 	public int lineNumber = 1, columnNumber = 1;
+	public int tabWidth = 4; // Because it's the default in Eclipse.
 	protected char[] tokenBuffer = new char[1024];
 	protected int length = 0;
 	protected State state = State.NO_TOKEN;
@@ -188,7 +189,9 @@ public class Tokenizer extends BaseStreamSource<Token> implements StreamDestinat
 			throw new ParseError("Invalid tokenizer state: "+state, getSourceLocation());
 		}
 		
-		if( c == '\n' ) {
+		if( c == '\t' ) {
+			columnNumber += tabWidth;
+		} else if( c == '\n' ) {
 			lineNumber += 1;
 			columnNumber = 1;
 		} else {
