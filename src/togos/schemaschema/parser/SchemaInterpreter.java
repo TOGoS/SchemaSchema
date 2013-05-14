@@ -72,12 +72,20 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 	}
 	
 	abstract class DefinitionCommandInterpreter implements CommandInterpreter {
-		protected abstract void interpretDefinition( String name, Parameterized[] modifiers, Block body, SourceLocation sLoc ) throws Exception;
+		protected abstract void interpretDefinition( String name, Parameterized[] modifiers, Block body, boolean allowRedefinition, SourceLocation sLoc ) throws Exception;
 		
 		@Override public boolean interpretCommand( Command cmd, int cmdPrefixLength ) throws Exception {
 			ensureNoParameters(cmd.subject, "symbol being defined");
 			Phrase cmdPhrase = cmd.subject.subject;
-			interpretDefinition( cmdPhrase.tail(cmdPrefixLength).unquotedText(), cmd.modifiers, cmd.body, cmd.sLoc );
+			boolean allowRedefinition;
+			if( cmdPrefixLength >= 2 && cmdPhrase.startsWithWord("redefine") ) {
+				cmdPhrase = cmdPhrase.tail(1);
+				--cmdPrefixLength;
+				allowRedefinition = true;
+			} else {
+				allowRedefinition = false;
+			}
+			interpretDefinition( cmdPhrase.tail(cmdPrefixLength).unquotedText(), cmd.modifiers, cmd.body, allowRedefinition, cmd.sLoc );
 			return true;
 		}
 	}
@@ -174,6 +182,13 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 				t.addIndex(new IndexSpec("primary", t.getFields()));
 			}
 			
+			return t;
+		}
+
+		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body, boolean allowRedefinition, SourceLocation sLoc ) throws Exception {
+			Type t = parseClass( name, modifiers, body, sLoc );
+			
+			defineType( t, allowRedefinition );
 			CommandInterpreter instanceInterpreter;
 			if( PropertyUtil.getFirstInheritedValue(t, Predicates.EXTENDS, (SchemaObject)null) == Types.CLASS ) {
 				// If the defined class extends class, then instances will themselves be classes
@@ -184,13 +199,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 				// will use the plain old object interpreter
 				instanceInterpreter = new ObjectCommandInterpreter();
 			}
-			commandInterpreters.put(t.getName(), instanceInterpreter, false, t.getSourceLocation());
-			
-			return t;
-		}
-
-		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body, SourceLocation sLoc ) throws Exception {
-			defineType( parseClass( name, modifiers, body, sLoc ) );
+			commandInterpreters.put(t.getName(), instanceInterpreter, allowRedefinition, t.getSourceLocation());
 		}
 	}
 	
@@ -217,21 +226,21 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 			return t;
 		}
 		
-		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body, SourceLocation sLoc ) throws Exception {
-			defineType( parseEnum( name, modifiers, body, sLoc ) );
+		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body, boolean allowRedefinition, SourceLocation sLoc ) throws Exception {
+			defineType( parseEnum( name, modifiers, body, sLoc ), allowRedefinition );
 		}
 	}
 	
 	class ObjectCommandInterpreter extends DefinitionCommandInterpreter {
 		public ObjectCommandInterpreter() { }
 		
-		protected void defineObject( SchemaObject obj ) throws Exception {
-			things.put( obj.getName(), obj, false, obj.getSourceLocation() );
+		protected void defineObject( SchemaObject obj, boolean allowRedefinition ) throws Exception {
+			things.put( obj.getName(), obj, allowRedefinition, obj.getSourceLocation() );
 			_data( obj );
 		}
 		
-		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body, SourceLocation sLoc ) throws Exception {
-			defineObject( parseObject( name, modifiers, body, sLoc ) );
+		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body, boolean allowRedefinition, SourceLocation sLoc ) throws Exception {
+			defineObject( parseObject( name, modifiers, body, sLoc ), allowRedefinition );
 		}
 	}
 	
@@ -242,14 +251,14 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 			this.modifierLookupContext = modifierLookupContext;
 		}
 		
-		protected void definePredicate( Predicate pred ) throws Exception {
-			predicates.put( pred.getName(), pred, false, pred.getSourceLocation() );
-			defineModifier( modifierLookupContext, pred.getName(), new SimplePredicateModifierSpec(pred), false, pred.getSourceLocation() );
+		protected void definePredicate( Predicate pred, boolean allowRedefinition ) throws Exception {
+			predicates.put( pred.getName(), pred, allowRedefinition, pred.getSourceLocation() );
+			defineModifier( modifierLookupContext, pred.getName(), new SimplePredicateModifierSpec(pred), allowRedefinition, pred.getSourceLocation() );
 			_data( pred );
 		}
 		
-		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body, SourceLocation sLoc ) throws Exception {
-			definePredicate( parseProperty( name, modifiers, body, sLoc ) );
+		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body, boolean allowRedefinition, SourceLocation sLoc ) throws Exception {
+			definePredicate( parseProperty( name, modifiers, body, sLoc ), allowRedefinition );
 		}
 	}
 	
@@ -259,8 +268,8 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 			this.registeredModifiers = predefinedModifiers;
 		}
 		
-		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body, SourceLocation sLoc ) throws Exception {
-			defineModifier( registeredModifiers, name, parseModifierSpec(name, modifiers, body, registeredModifiers), false, sLoc );
+		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body, boolean allowRedefinition, SourceLocation sLoc ) throws Exception {
+			defineModifier( registeredModifiers, name, parseModifierSpec(name, modifiers, body, registeredModifiers), allowRedefinition, sLoc );
 		}
 	}
 	
@@ -480,12 +489,16 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 	
 	public SchemaInterpreter() { }
 	
-	public void defineType( Type t ) throws Exception {
-		types.put( t.getName(), t, false, t.getSourceLocation() );
+	public void defineType( Type t, boolean allowRedefinition ) throws Exception {
+		types.put( t.getName(), t, allowRedefinition, t.getSourceLocation() );
 		HashMap<Predicate,Set<SchemaObject>> appliedProperties = new HashMap<Predicate,Set<SchemaObject>>();
 		PropertyUtil.add(appliedProperties, Predicates.OBJECTS_ARE_MEMBERS_OF, t);
-		fieldModifiers.put( t.getName(), new AliasModifier(Predicates.OBJECTS_ARE_MEMBERS_OF.getName(), appliedProperties), false, t.getSourceLocation() );
+		fieldModifiers.put( t.getName(), new AliasModifier(Predicates.OBJECTS_ARE_MEMBERS_OF.getName(), appliedProperties), allowRedefinition, t.getSourceLocation() );
 		_data( t );
+	}
+	
+	public void defineType( Type t ) throws Exception {
+		defineType( t, false );
 	}
 	
 	boolean allowIsLessModifierShorthand = true;
@@ -701,6 +714,9 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 		Phrase cmd = value.subject.subject;
 		if( cmd.words.length >= 2 ) {
 			Phrase typeName = cmd.head(cmd.words.length-1);
+			if( cmd.words.length >= 3 && cmd.startsWithWord("redefine") ) {
+				typeName = typeName.tail(1);
+			}
 			CommandInterpreter ci = commandInterpreters.get(typeName);
 			if( ci.interpretCommand(value, cmd.words.length-1) ) {
 				return;
