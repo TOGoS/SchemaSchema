@@ -20,13 +20,13 @@ import togos.schemaschema.Types;
 
 public class SchemaParserTest extends TestCase
 {
-	SchemaParser sp;
+	SchemaInterpreter sp;
 	
 	public void setUp() throws Exception {
-		sp = new SchemaParser();
+		sp = new SchemaInterpreter();
 		CommandInterpreters.defineTypeDefinitionCommands(sp);
-		sp.defineFieldModifier("key", SchemaParser.FieldIndexModifierSpec.INSTANCE);
-		sp.defineFieldModifier("index", SchemaParser.FieldIndexModifierSpec.INSTANCE);
+		sp.defineFieldModifier("key", SchemaInterpreter.FieldIndexModifierSpec.INSTANCE);
+		sp.defineFieldModifier("index", SchemaInterpreter.FieldIndexModifierSpec.INSTANCE);
 		sp.defineType(Types.INTEGER);
 		sp.defineType(Types.STRING);
 		sp.defineClassPredicate( Predicates.EXTENDS );

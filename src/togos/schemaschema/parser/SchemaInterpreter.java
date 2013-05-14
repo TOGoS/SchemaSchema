@@ -36,7 +36,7 @@ import togos.schemaschema.parser.ast.Parameterized;
 import togos.schemaschema.parser.ast.Phrase;
 import togos.schemaschema.parser.ast.Word;
 
-public class SchemaParser extends BaseStreamSource<SchemaObject> implements StreamDestination<Command>
+public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements StreamDestination<Command>
 {
 	protected static String singleString( Parameterized p, String contextDescription ) throws InterpretError {
 		if( p.parameters.length != 0 ) {
@@ -116,7 +116,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 						referenceBody = fieldCommand.body;
 					} else {
 						ModifierSpec m = fieldModifiers.get(mod.subject);
-						_fieldModifiers.add(m.bind(SchemaParser.this, mod.parameters, mod.sLoc));
+						_fieldModifiers.add(m.bind(SchemaInterpreter.this, mod.parameters, mod.sLoc));
 					}
 				}
 				
@@ -159,7 +159,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 			
 			for( Parameterized mod : modifiers ) {
 				ModifierSpec m = classModifiers.get(mod.subject);
-				m.bind(SchemaParser.this, mod.parameters, mod.sLoc).apply(t);
+				m.bind(SchemaInterpreter.this, mod.parameters, mod.sLoc).apply(t);
 			}
 			
 			if( isTrue(t, Predicates.IS_SELF_KEYED) ) {
@@ -191,7 +191,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 			EnumType t = new EnumType(name, sLoc);
 			
 			for( Parameterized mod : modifiers ) {
-				classModifiers.get(mod.subject).bind(SchemaParser.this, mod.parameters, mod.sLoc).apply(t);
+				classModifiers.get(mod.subject).bind(SchemaInterpreter.this, mod.parameters, mod.sLoc).apply(t);
 			}
 			
 			for( Command c : body.commands ) {
@@ -202,7 +202,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 				
 				SchemaObject obj = t.addValidValue(c.subject.subject.unquotedText(), c.sLoc);
 				for( Parameterized mod : c.modifiers ) {
-					generalModifiers.get(mod.subject).bind(SchemaParser.this, mod.parameters, mod.sLoc).apply(obj);
+					generalModifiers.get(mod.subject).bind(SchemaInterpreter.this, mod.parameters, mod.sLoc).apply(obj);
 				}
 			}
 			
@@ -260,7 +260,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	//// Modifiers
 	
 	interface ModifierSpec {
-		public Modifier bind( SchemaParser sp, Parameterized[] params, SourceLocation sLoc ) throws InterpretError;
+		public Modifier bind( SchemaInterpreter sp, Parameterized[] params, SourceLocation sLoc ) throws InterpretError;
 	}
 	
 	interface Modifier {
@@ -278,7 +278,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 			this.predicate = p;
 		}
 		
-		@Override public Modifier bind(SchemaParser sp, Parameterized[] params, SourceLocation sLoc) throws InterpretError {
+		@Override public Modifier bind(SchemaInterpreter sp, Parameterized[] params, SourceLocation sLoc) throws InterpretError {
 			final Set<SchemaObject> values = new LinkedHashSet<SchemaObject>();
 			if( params.length == 0 ) {
 				values.add( BaseSchemaObject.forScalar(Boolean.TRUE, sLoc) );
@@ -307,7 +307,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		}
 		
 		@Override
-		public Modifier bind(SchemaParser sp, Parameterized[] params, SourceLocation sLoc) throws InterpretError {
+		public Modifier bind(SchemaInterpreter sp, Parameterized[] params, SourceLocation sLoc) throws InterpretError {
 			if( params.length > 0 ) {
 				throw new InterpretError(name+" modifier takes no arguments", params[0].sLoc);
 			}
@@ -324,7 +324,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		public static FieldIndexModifierSpec INSTANCE = new FieldIndexModifierSpec();
 		
 		@Override
-		public Modifier bind(SchemaParser sp, Parameterized[] params, SourceLocation sLoc) throws InterpretError {
+		public Modifier bind(SchemaInterpreter sp, Parameterized[] params, SourceLocation sLoc) throws InterpretError {
 			final ArrayList<String> indexNames = new ArrayList<String>();
 			
 			if( params.length == 0 ) {
@@ -368,7 +368,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		}
 		
 		@Override
-		public Modifier bind(SchemaParser sp, final Parameterized[] params, final SourceLocation sLoc) throws InterpretError {
+		public Modifier bind(SchemaInterpreter sp, final Parameterized[] params, final SourceLocation sLoc) throws InterpretError {
 			for( Parameterized p : params ) {
 				for( Parameterized pp : p.parameters ) {
 					throw new InterpretError( "Enum values cannot themselves take parameters", pp.sLoc);
@@ -458,7 +458,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 	protected SymbolLookupContext<ModifierSpec> classModifiers = new SymbolLookupContext<ModifierSpec>(generalModifiers, "class modifier", ModifierSpec.class);
 	protected SymbolLookupContext<CommandInterpreter> commandInterpreters = new SymbolLookupContext<CommandInterpreter>(null, "command interpreter", CommandInterpreter.class); 
 	
-	public SchemaParser() { }
+	public SchemaInterpreter() { }
 	
 	public void defineType( Type t ) throws Exception {
 		types.put( t.getName(), t );
@@ -638,7 +638,7 @@ public class SchemaParser extends BaseStreamSource<SchemaObject> implements Stre
 		}
 		return new ModifierSpec() {
 			@Override
-			public Modifier bind(SchemaParser sp, Parameterized[] params, SourceLocation sLoc) throws InterpretError {
+			public Modifier bind(SchemaInterpreter sp, Parameterized[] params, SourceLocation sLoc) throws InterpretError {
 				if( params.length > 0 ) {
 					throw new InterpretError("Custom "+predefinedModifiers.name+" '"+name+"' takes no parameters", sLoc);
 				}

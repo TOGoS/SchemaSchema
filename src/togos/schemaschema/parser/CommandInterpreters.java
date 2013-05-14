@@ -5,7 +5,7 @@ public class CommandInterpreters
 {
 	private CommandInterpreters() { }
 	
-	public static void defineTypeDefinitionCommands( SchemaParser sp ) {
+	public static void defineTypeDefinitionCommands( SchemaInterpreter sp ) {
 		sp.defineCommand("class", sp.new ClassDefinitionCommandInterpreter());
 		sp.defineCommand("enum", sp.new EnumDefinitionCommandInterpreter());
 		sp.defineCommand("property", sp.new PropertyDefinitionCommandInterpreter(sp.generalModifiers));
