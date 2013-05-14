@@ -99,7 +99,9 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 			this(null);
 		}
 		
-		public ComplexType parseClass( String name, Parameterized[] modifiers, Block body, SourceLocation sLoc ) throws InterpretError {
+		public ComplexType parseClass( String name, Parameterized[] modifiers, Block body, SourceLocation sLoc )
+			throws InterpretError
+		{
 			ComplexType t = new ComplexType( name, sLoc );
 			if( metaClass != null ) PropertyUtil.add( t.properties, Predicates.IS_MEMBER_OF, metaClass );
 			
@@ -108,6 +110,8 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 				for( Parameterized fieldNameParameter : fieldCommand.subject.parameters ) {
 					throw new InterpretError("Field name cannot have parameters", fieldNameParameter.sLoc );
 				}
+				
+				String foreignTypeName = null;
 				Block referenceBody = null;
 				for( Parameterized mod : fieldCommand.modifiers ) {
 					if( "reference".equals(mod.subject.unquotedText()) ) {
@@ -118,6 +122,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 								mod.parameters.length+" parameters", mod.sLoc
 							);
 						}
+						foreignTypeName = singleString( mod.parameters[0] ,"foreign type name" );
 						if( fieldCommand.body == null ) {
 							throw new InterpretError(
 								"'reference' field specification requires a block", fieldCommand.sLoc
@@ -138,9 +143,18 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 				
 				FieldSpec f;
 				if( referenceBody != null ) {
+					String fieldName = fieldCommand.subject.subject.unquotedText();
+					
+					assert foreignTypeName != null;
+					ComplexType foreignType = foreignTypeName.equals(name) ? t : (ComplexType)types.get(foreignTypeName);
+					
 					ArrayList<ForeignKeySpec.Component> fkComponents = new ArrayList<ForeignKeySpec.Component>();
 					for( Command fkCommand : referenceBody.commands ) {
 						String foreignFieldName = singleString( fkCommand.subject, "foreign field name" );
+						FieldSpec foreignField = foreignType.getField(foreignFieldName);
+						if( foreignField == null ) {
+							throw new InterpretError("Foreign key constraint references non-existent field '"+foreignFieldName+"' on type '"+foreignTypeName+"'", fkCommand.subject.sLoc);
+						}
 						
 						Command localFieldNode;
 						if( fkCommand.body != null ) {
@@ -161,11 +175,32 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 							localFieldNode = fkCommand;
 						}
 						
-						String localFieldName = singleString(localFieldNode.subject, "local field name");
-						FieldSpec localField = getSimpleField( t, localFieldNode );;
+						Type foreignFieldType = foreignField.getObjectType();
 						
+						String localFieldName = singleString(localFieldNode.subject, "local field name");
+						FieldSpec localField = getSimpleField( t, localFieldNode );
+						
+						// If the local field already specifies a type, it must match
+						// the foreign field's type:
+						for( Type localFieldType : localField.getObjectTypes() ) {
+							if( localFieldType != foreignFieldType ) {
+								throw new InterpretError(
+									"Local copy of reference field '"+localFieldName+"' "+
+									"specifies a type ("+localFieldType.getName()+") "+
+									"that is different than the foreign field's type ("+foreignFieldType.getName()+")",
+									localFieldNode.sLoc
+								);
+							}
+						}
+						PropertyUtil.add( localField.getProperties(), Predicates.OBJECTS_ARE_MEMBERS_OF, foreignFieldType );
+						
+						fkComponents.add( new ForeignKeySpec.Component(foreignField, localField) );
 						// TODO: Implement rest of this
 					}
+					
+					t.addForeignKey( new ForeignKeySpec(t.getName()+" "+fieldName, foreignType, fkComponents) );
+					
+					// TODO: build fk 
 					//fkSpec
 					//fieldType = new ForeignKeyReferenceType( singleString(mod.parameters[0], "referenced class name"), Types.REFERENCE, fkSpec);
 				} else {

@@ -16,6 +16,15 @@ public class FieldSpec extends BaseSchemaObject
 		return PropertyUtil.getAll(properties, Predicates.OBJECTS_ARE_MEMBERS_OF, Type.class);
 	}
 	
+	public Type getObjectType() {
+		Set<Type> s = PropertyUtil.getAll(properties, Predicates.OBJECTS_ARE_MEMBERS_OF, Type.class);
+		if( s.size() > 1 ) {
+			throw new RuntimeException("Field '"+name+"' specifies more than one object type");
+		}
+		for( Type t : s ) return t;
+		throw new RuntimeException("Field '"+name+"' does not specify a type");
+	}
+	
 	public String toString() {
 		String s = Phrase.quoteIfNecessary(name);
 		for( Map.Entry<Predicate,Set<SchemaObject>> e : properties.entrySet() ) {

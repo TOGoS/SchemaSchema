@@ -52,6 +52,9 @@ public class ComplexType extends BaseSchemaObject implements Type
 		indexesByName.put( indexSpec.name, indexSpec );
 	}
 	
+	public void addForeignKey( ForeignKeySpec fks ) {
+		foreignKeysByName.put( fks.name, fks );
+	}
 	public Collection<ForeignKeySpec> getForeignKeys() {
 		return foreignKeysByName.values();
 	}

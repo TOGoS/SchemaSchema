@@ -9,7 +9,7 @@ public class ForeignKeySpec
 		public final FieldSpec targetField;
 		public final FieldSpec localField;
 		
-		Component( FieldSpec targetField, FieldSpec localField ) {
+		public Component( FieldSpec targetField, FieldSpec localField ) {
 			this.targetField = targetField;
 			this.localField = localField;
 		}
@@ -17,10 +17,12 @@ public class ForeignKeySpec
 		public String toString() { return targetField + " = " + localField; }
 	}
 	
+	public final String name;
 	public final ComplexType target;
 	public final Collection<Component> components;
 	
-	ForeignKeySpec( ComplexType target, Collection<Component> components ) {
+	public ForeignKeySpec( String name, ComplexType target, Collection<Component> components ) {
+		this.name = name;
 		this.target = target;
 		this.components = Collections.unmodifiableCollection(components);
 	}
