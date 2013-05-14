@@ -12,11 +12,12 @@ import togos.schemaschema.parser.ast.Word;
 /**
  * All information in a ComplexType should be represented
  * within its SchemaObject properties.  The type exists solely
- * to provide additional type information.
+ * to provide additional type information for use in Java code.
  */
 public class ComplexType extends BaseSchemaObject implements Type
 {
-	/** TODO: Remove; use properties to represent these */
+	// TODO: Remove; use properties to represent these
+	// TODO: Move index and foreign key fields to 'RelationalClass' class
 	protected final Map<String,FieldSpec> fieldsByName = new LinkedHashMap<String,FieldSpec>();
 	protected final Map<String,IndexSpec> indexesByName = new LinkedHashMap<String,IndexSpec>();
 	protected final Map<String,ForeignKeySpec> foreignKeysByName = new LinkedHashMap<String,ForeignKeySpec>();

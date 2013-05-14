@@ -256,6 +256,10 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 			return new Command( subject, modifiers.toArray(new Parameterized[modifiers.size()]), body, firstSLoc );
 		}
 		
+		protected Block emptyBlock(SourceLocation sLoc) {
+			return new Block( Block.EMPTY.commands, sLoc );
+		}
+		
 		@Override public ParseState token(Token t) throws Exception {
 			if( firstSLoc == BaseSourceLocation.NONE ) firstSLoc = t;
 			
@@ -270,6 +274,7 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 						state = State.MODIFIERS;
 						return new ParameterizedParseState(this);
 					} else if( "\n".equals(t.text) ) {
+						this.body = emptyBlock((SourceLocation)t);
 						return parent.command( toCommand() ).token(t);
 					} else if( "{".equals(t.text) ) {
 						state = State.BODY;
@@ -287,6 +292,7 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 						state = State.MODIFIERS;
 						return new ParameterizedParseState(this);
 					} else if( "\n".equals(t.text) ) {
+						this.body = emptyBlock((SourceLocation)t);
 						return parent.command( toCommand() ).token(t);
 					} else if( "{".equals(t.text) ) {
 						state = State.BODY;
