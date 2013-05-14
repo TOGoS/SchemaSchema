@@ -38,6 +38,14 @@ import togos.schemaschema.parser.ast.Word;
 
 public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements StreamDestination<Command>
 {
+	public static class RedefinitionError extends InterpretError {
+		private static final long serialVersionUID = 1L;
+		
+		public RedefinitionError( String message, SourceLocation sLoc ) {
+			super(message, sLoc);
+		}
+	}
+	
 	protected static String singleString( Parameterized p, String contextDescription ) throws InterpretError {
 		if( p.parameters.length != 0 ) {
 			throw new InterpretError( contextDescription + " cannot take arguments", p.sLoc );
@@ -176,7 +184,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 				// will use the plain old object interpreter
 				instanceInterpreter = new ObjectCommandInterpreter();
 			}
-			commandInterpreters.put(t.getName(), instanceInterpreter);
+			commandInterpreters.put(t.getName(), instanceInterpreter, false, t.getSourceLocation());
 			
 			return t;
 		}
@@ -218,7 +226,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 		public ObjectCommandInterpreter() { }
 		
 		protected void defineObject( SchemaObject obj ) throws Exception {
-			things.put( obj.getName(), obj );
+			things.put( obj.getName(), obj, false, obj.getSourceLocation() );
 			_data( obj );
 		}
 		
@@ -235,9 +243,8 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 		}
 		
 		protected void definePredicate( Predicate pred ) throws Exception {
-			things.put( pred.getName(), pred );
-			predicates.put( pred.getName(), pred );
-			defineModifier( modifierLookupContext, pred.getName(), new SimplePredicateModifierSpec(pred) );
+			predicates.put( pred.getName(), pred, false, pred.getSourceLocation() );
+			defineModifier( modifierLookupContext, pred.getName(), new SimplePredicateModifierSpec(pred), false, pred.getSourceLocation() );
 			_data( pred );
 		}
 		
@@ -253,7 +260,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 		}
 		
 		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body, SourceLocation sLoc ) throws Exception {
-			defineModifier( registeredModifiers, name, parseModifierSpec(name, modifiers, body, registeredModifiers) );
+			defineModifier( registeredModifiers, name, parseModifierSpec(name, modifiers, body, registeredModifiers), false, sLoc );
 		}
 	}
 	
@@ -410,6 +417,15 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 			}
 		}
 		
+		public boolean isDefined( String name ) {
+			SymbolLookupContext<? super T> ctx = this;
+			while( ctx != null ) {
+				if( ctx.values.containsKey(name) ) return true;
+				ctx = ctx.parent;
+			}
+			return false;
+		}
+		
 		public T get(String name, Class<T> requiredType, boolean throwOnNotFound, boolean throwOnWrongType, SourceLocation refLoc) throws InterpretError {
 			SymbolLookupContext<? super T> ctx = this;
 			while( ctx != null ) {
@@ -441,7 +457,11 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 			return get(name, valueClass, true, true, BaseSourceLocation.NONE); 
 		}
 		
-		public void put(String name, T value) {
+		public void put(String name, T value, boolean allowRedefinition, SourceLocation sLoc) throws RedefinitionError {
+			if( isDefined(name) && !allowRedefinition ) {
+				throw new RedefinitionError("Redefining "+this.name+" '"+name+"'", sLoc);
+			}
+			
 			SymbolLookupContext<? super T> ctx = this;
 			while( ctx != null ) {
 				ctx.values.put(name, value);
@@ -461,59 +481,70 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 	public SchemaInterpreter() { }
 	
 	public void defineType( Type t ) throws Exception {
-		types.put( t.getName(), t );
+		types.put( t.getName(), t, false, t.getSourceLocation() );
 		HashMap<Predicate,Set<SchemaObject>> appliedProperties = new HashMap<Predicate,Set<SchemaObject>>();
 		PropertyUtil.add(appliedProperties, Predicates.OBJECTS_ARE_MEMBERS_OF, t);
-		fieldModifiers.put( t.getName(), new AliasModifier(Predicates.OBJECTS_ARE_MEMBERS_OF.getName(), appliedProperties) );
+		fieldModifiers.put( t.getName(), new AliasModifier(Predicates.OBJECTS_ARE_MEMBERS_OF.getName(), appliedProperties), false, t.getSourceLocation() );
 		_data( t );
 	}
 	
 	boolean allowIsLessModifierShorthand = true;
 	
-	protected void defineModifier( SymbolLookupContext<ModifierSpec> modifierMap, String name, ModifierSpec spec ) {
-		modifierMap.put( name, spec );
+	protected void defineModifier( SymbolLookupContext<ModifierSpec> modifierMap, String name, ModifierSpec spec, boolean allowRedefinition, SourceLocation sLoc )
+		throws InterpretError 
+	{
+		modifierMap.put( name, spec, allowRedefinition, sLoc );
 		if( allowIsLessModifierShorthand && name.startsWith("is ") ) {
 			String shorthand = name.substring(3);
 			//System.err.println("Duplicate '"+name+"' as '"+shorthand+"'");
-			if( !modifierMap.values.containsKey(shorthand) ) { 
-				modifierMap.put( shorthand, spec );
+			if( !modifierMap.isDefined(shorthand) ) { 
+				modifierMap.put( shorthand, spec, false, sLoc );
 			}
 		}
 	}
 	
-	public void defineFieldModifier( String name, ModifierSpec spec ) {
-		defineModifier(fieldModifiers, name, spec);
+	public void defineFieldModifier( String name, ModifierSpec spec ) throws InterpretError {
+		defineModifier(fieldModifiers, name, spec, false, BaseSourceLocation.NONE );
 	}
 	
-	public void defineClassModifier( String name, ModifierSpec spec ) {
-		defineModifier(classModifiers, name, spec);
+	public void defineClassModifier( String name, ModifierSpec spec ) throws InterpretError {
+		defineModifier(classModifiers, name, spec, false, BaseSourceLocation.NONE );
+	}
+	
+	protected void definePredicate( Predicate pred, SymbolLookupContext<ModifierSpec> modifierContext, boolean allowRedefinition )
+		throws Exception
+	{
+		predicates.put( pred.getName(), pred, false, pred.getSourceLocation() );
+		defineModifier( modifierContext, pred.getName(), new SimplePredicateModifierSpec(pred), false, pred.getSourceLocation() );
+		_data( pred );
 	}
 	
 	public void defineFieldPredicate( Predicate pred ) throws Exception {
-		things.put( pred.getName(), pred );
-		predicates.put( pred.getName(), pred );
-		defineFieldModifier( pred.getName(), new SimplePredicateModifierSpec(pred) );
-		_data( pred );
+		definePredicate( pred, fieldModifiers, false );
 	}
 	
 	public void defineClassPredicate( Predicate pred ) throws Exception {
-		things.put( pred.getName(), pred );
-		predicates.put( pred.getName(), pred );
-		defineClassModifier( pred.getName(), new SimplePredicateModifierSpec(pred) );
-		_data( pred );
+		definePredicate( pred, classModifiers, false );
 	}
 	
 	public void defineGenericPredicate( Predicate pred ) throws Exception {
-		things.put( pred.getName(), pred );
-		predicates.put( pred.getName(), pred );
-		defineModifier( generalModifiers, pred.getName(), new SimplePredicateModifierSpec(pred) );
-		_data( pred );
+		definePredicate( pred, generalModifiers, false );
+	}
+	
+	public void defineCommand( String name, CommandInterpreter interpreter, boolean allowRedefinition, SourceLocation sLoc )
+		throws InterpretError
+	{
+		commandInterpreters.put( name, interpreter, allowRedefinition, sLoc );
 	}
 	
 	public void defineCommand( String name, CommandInterpreter interpreter ) {
-		commandInterpreters.put( name, interpreter );
+		try {
+			commandInterpreters.put( name, interpreter, false, BaseSourceLocation.NONE );
+		} catch( InterpretError e ) {
+			throw new RuntimeException(e);
+		}
 	}
-		
+	
 	protected SchemaObject evaluate( SchemaObject v, Parameterized[] parameters ) throws InterpretError {
 		if( parameters.length > 0 ) {
 			throw new InterpretError("Don't know how to parameterize "+v.getClass(), parameters[0].sLoc);
