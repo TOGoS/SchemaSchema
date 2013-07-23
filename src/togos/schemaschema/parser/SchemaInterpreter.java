@@ -157,7 +157,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 						}
 						
 						Command localFieldNode;
-						if( fkCommand.body != null ) {
+						if( fkCommand.body.commands.length > 0 ) {
 							if( fkCommand.body.commands.length != 1 ) {
 								throw new InterpretError(
 									"Foreign key component requires exactly 0 or 1 local field specifications; given "+
