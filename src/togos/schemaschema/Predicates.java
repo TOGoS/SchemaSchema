@@ -17,4 +17,9 @@ public class Predicates
 	/** Applicable to variables/fields/predicates that may contain/map to a null value */
 	public static final Predicate IS_NULLABLE = new Predicate("is nullable", SLOC);
 	public static final Predicate IS_ENUM_TYPE = new Predicate("is enum type", SLOC);
+	/**
+	 * Fields are instance variables.
+	 * i.e. a class has a field, and an instance has that field -> some value as a predicate -> object.
+	 */
+	public static final Predicate HAS_FIELD = new Predicate("has field", SLOC);
 }

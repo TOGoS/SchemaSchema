@@ -108,12 +108,12 @@ public class PropertyUtil
 	}
 	
 	protected static void getAllInheritedValues(SchemaObject subject, Predicate pred, Set<SchemaObject> dest) {
-		dest.addAll( getAll(subject.getProperties(), pred) );
 		for( Object parent : getAll(subject.getProperties(), Predicates.EXTENDS) ) {
 			if( parent instanceof SchemaObject ) {
 				getAllInheritedValues( (SchemaObject)parent, pred, dest );
 			}
 		}
+		dest.addAll( getAll(subject.getProperties(), pred) );
 	}
 	
 	public static Set<SchemaObject> getAllInheritedValues(SchemaObject subject, Predicate pred) {
@@ -121,6 +121,17 @@ public class PropertyUtil
 		getAllInheritedValues( subject, pred, dest );
 		return dest;
 	}
+	
+	public static <C> Set<C> getAllInheritedValuesOfClass(SchemaObject subject, Predicate pred, Class<C> c) {
+		HashSet<SchemaObject> dest = new HashSet<SchemaObject>();
+		getAllInheritedValues( subject, pred, dest );
+		HashSet<C> destc = new HashSet<C>();
+		for( SchemaObject o : dest ) {
+			if( c.isAssignableFrom(o.getClass()) ) destc.add(c.cast(o));
+		}
+		return destc;
+	}
+
 	
 	/**
 	 * Walk up the inheritance tree (an exception will be thrown if there is a fork)

@@ -6,7 +6,7 @@ import java.util.Set;
 import togos.lang.SourceLocation;
 import togos.schemaschema.parser.ast.Phrase;
 
-public class FieldSpec extends BaseSchemaObject
+public class FieldSpec extends Predicate
 {
 	public FieldSpec( String name, SourceLocation sLoc ) {
 		super(name, sLoc);

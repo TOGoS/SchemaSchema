@@ -18,7 +18,7 @@ public class ComplexType extends BaseSchemaObject implements Type
 {
 	// TODO: Remove; use properties to represent these
 	// TODO: Move index and foreign key fields to 'RelationalClass' class
-	protected final Map<String,FieldSpec> fieldsByName = new LinkedHashMap<String,FieldSpec>();
+	//protected final Map<String,FieldSpec> fieldsByName = new LinkedHashMap<String,FieldSpec>();
 	protected final Map<String,IndexSpec> indexesByName = new LinkedHashMap<String,IndexSpec>();
 	protected final Map<String,ForeignKeySpec> foreignKeysByName = new LinkedHashMap<String,ForeignKeySpec>();
 	
@@ -27,16 +27,18 @@ public class ComplexType extends BaseSchemaObject implements Type
 	}
 	
 	public Collection<FieldSpec> getFields() {
-		return fieldsByName.values();
+		return PropertyUtil.getAllInheritedValuesOfClass(this, Predicates.HAS_FIELD, FieldSpec.class);
 	}
 	public FieldSpec getField(String fieldName) {
-		return fieldsByName.get(fieldName);
+		for( FieldSpec f : getFields() ) if( fieldName.equals(f.getName())) return f;
+		return null;
 	}
 	public boolean hasField(String fieldName) {
-		return fieldsByName.containsKey(fieldName);
+		for( FieldSpec f : getFields() ) if( fieldName.equals(f.getName())) return true;
+		return false;
 	}
 	public void addField(FieldSpec fieldSpec) {
-		fieldsByName.put(fieldSpec.name, fieldSpec);
+		PropertyUtil.add(this.getProperties(), Predicates.HAS_FIELD, fieldSpec);
 	}
 	
 	public Collection<IndexSpec> getIndexes() {
@@ -70,8 +72,8 @@ public class ComplexType extends BaseSchemaObject implements Type
 			extendStr += ")";
 		}
 		
-		return "class "+Word.quote(name) + extendStr + (fieldsByName.size() == 0 ? " " :
-			" {\n" + StringUtil.indent("\t", StringUtil.join("\n", fieldsByName.values())) + "\n}"
+		return "class "+Word.quote(name) + extendStr + (getFields().size() == 0 ? " " :
+			" {\n" + StringUtil.indent("\t", StringUtil.join("\n", getFields())) + "\n}"
 		);
 	}
 }
