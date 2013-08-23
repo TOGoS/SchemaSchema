@@ -22,4 +22,6 @@ public class Predicates
 	 * i.e. a class has a field, and an instance has that field -> some value as a predicate -> object.
 	 */
 	public static final Predicate HAS_FIELD = new Predicate("has field", SLOC);
+	public static final Predicate HAS_INDEX = new Predicate("has index", SLOC);
+	public static final Predicate HAS_FOREIGN_KEY = new Predicate("has foreign key", SLOC);
 }

@@ -198,7 +198,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 						// TODO: Implement rest of this
 					}
 					
-					t.addForeignKey( new ForeignKeySpec(t.getName()+" "+fieldName, foreignType, fkComponents) );
+					t.addForeignKey( new ForeignKeySpec(t.getName()+" "+fieldName, foreignType, fkComponents, fieldCommand.sLoc) );
 					
 					// TODO: build fk 
 					//fkSpec
@@ -214,7 +214,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 			}
 			
 			if( isTrue(t, Predicates.IS_SELF_KEYED) ) {
-				t.addIndex(new IndexSpec("primary", t.getFields()));
+				t.addIndex(new IndexSpec("primary", t.getFields(), sLoc));
 			}
 			
 			return t;
@@ -375,7 +375,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 		public static FieldIndexModifierSpec INSTANCE = new FieldIndexModifierSpec();
 		
 		@Override
-		public Modifier bind(SchemaInterpreter sp, Parameterized[] params, SourceLocation sLoc) throws InterpretError {
+		public Modifier bind(SchemaInterpreter sp, Parameterized[] params, final SourceLocation sLoc) throws InterpretError {
 			final ArrayList<String> indexNames = new ArrayList<String>();
 			
 			if( params.length == 0 ) {
@@ -399,7 +399,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 					for( String indexName : indexNames ) {
 						IndexSpec index = classObject.getIndex(indexName);
 						if( index == null ) {
-							index = new IndexSpec(indexName);
+							index = new IndexSpec(indexName, sLoc);
 							classObject.addIndex(index);
 						}
 						index.fields.add( fieldSpec );

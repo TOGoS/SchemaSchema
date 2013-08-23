@@ -107,7 +107,7 @@ public class SchemaParserTest extends TestCase
 		assertEquals( 1, ot.getIndexes().size() );
 		assertTrue( ot.hasIndex("primary") );
 		IndexSpec primaryIndex = ot.getIndex("primary");
-		assertEquals( "primary", primaryIndex.name );
+		assertEquals( "primary", primaryIndex.getName() );
 		assertEquals( 2, primaryIndex.fields.size() );
 	}
 	

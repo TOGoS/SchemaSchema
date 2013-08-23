@@ -1,8 +1,6 @@
 package togos.schemaschema;
 
 import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Set;
 
 import togos.lang.SourceLocation;
@@ -16,12 +14,6 @@ import togos.schemaschema.parser.ast.Word;
  */
 public class ComplexType extends BaseSchemaObject implements Type
 {
-	// TODO: Remove; use properties to represent these
-	// TODO: Move index and foreign key fields to 'RelationalClass' class
-	//protected final Map<String,FieldSpec> fieldsByName = new LinkedHashMap<String,FieldSpec>();
-	protected final Map<String,IndexSpec> indexesByName = new LinkedHashMap<String,IndexSpec>();
-	protected final Map<String,ForeignKeySpec> foreignKeysByName = new LinkedHashMap<String,ForeignKeySpec>();
-	
 	public ComplexType( String name, SourceLocation sLoc ) {
 		super(name, sLoc);
 	}
@@ -29,36 +21,36 @@ public class ComplexType extends BaseSchemaObject implements Type
 	public Collection<FieldSpec> getFields() {
 		return PropertyUtil.getAllInheritedValuesOfClass(this, Predicates.HAS_FIELD, FieldSpec.class);
 	}
-	public FieldSpec getField(String fieldName) {
-		for( FieldSpec f : getFields() ) if( fieldName.equals(f.getName())) return f;
+	public FieldSpec getField(String name) {
+		for( FieldSpec f : getFields() ) if( name.equals(f.getName())) return f;
 		return null;
 	}
-	public boolean hasField(String fieldName) {
-		for( FieldSpec f : getFields() ) if( fieldName.equals(f.getName())) return true;
-		return false;
+	public boolean hasField(String name) {
+		return getField(name) != null;
 	}
 	public void addField(FieldSpec fieldSpec) {
 		PropertyUtil.add(this.getProperties(), Predicates.HAS_FIELD, fieldSpec);
 	}
 	
 	public Collection<IndexSpec> getIndexes() {
-		return indexesByName.values();
-	}
-	public boolean hasIndex(String name) {
-		return indexesByName.containsKey(name);
+		return PropertyUtil.getAllInheritedValuesOfClass(this, Predicates.HAS_INDEX, IndexSpec.class);
 	}
 	public IndexSpec getIndex(String name) {
-		return indexesByName.get(name);
+		for( IndexSpec i : getIndexes() ) if(name.equals(i.getName())) return i;
+		return null;
+	}
+	public boolean hasIndex(String name) {
+		return getIndex(name) != null;
 	}
 	public void addIndex(IndexSpec indexSpec) {
-		indexesByName.put( indexSpec.name, indexSpec );
+		PropertyUtil.add(this.getProperties(), Predicates.HAS_INDEX, indexSpec);
 	}
 	
-	public void addForeignKey( ForeignKeySpec fks ) {
-		foreignKeysByName.put( fks.name, fks );
-	}
 	public Collection<ForeignKeySpec> getForeignKeys() {
-		return foreignKeysByName.values();
+		return PropertyUtil.getAllInheritedValuesOfClass(this, Predicates.HAS_FOREIGN_KEY, ForeignKeySpec.class);
+	}
+	public void addForeignKey( ForeignKeySpec fks ) {
+		PropertyUtil.add(this.getProperties(), Predicates.HAS_FOREIGN_KEY, fks);
 	}
 	
 	public String toString() {

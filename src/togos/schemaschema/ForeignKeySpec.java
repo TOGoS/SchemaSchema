@@ -3,7 +3,9 @@ package togos.schemaschema;
 import java.util.Collection;
 import java.util.Collections;
 
-public class ForeignKeySpec
+import togos.lang.SourceLocation;
+
+public class ForeignKeySpec extends BaseSchemaObject
 {
 	public final static class Component {
 		public final FieldSpec targetField;
@@ -17,12 +19,11 @@ public class ForeignKeySpec
 		public String toString() { return targetField + " = " + localField; }
 	}
 	
-	public final String name;
 	public final ComplexType target;
 	public final Collection<Component> components;
 	
-	public ForeignKeySpec( String name, ComplexType target, Collection<Component> components ) {
-		this.name = name;
+	public ForeignKeySpec( String name, ComplexType target, Collection<Component> components, SourceLocation sLoc ) {
+		super( name, sLoc );
 		this.target = target;
 		this.components = Collections.unmodifiableCollection(components);
 	}
