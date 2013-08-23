@@ -123,9 +123,9 @@ public class PropertyUtil
 	}
 	
 	public static <C> Set<C> getAllInheritedValuesOfClass(SchemaObject subject, Predicate pred, Class<C> c) {
-		HashSet<SchemaObject> dest = new HashSet<SchemaObject>();
+		HashSet<SchemaObject> dest = new LinkedHashSet<SchemaObject>();
 		getAllInheritedValues( subject, pred, dest );
-		HashSet<C> destc = new HashSet<C>();
+		HashSet<C> destc = new LinkedHashSet<C>();
 		for( SchemaObject o : dest ) {
 			if( c.isAssignableFrom(o.getClass()) ) destc.add(c.cast(o));
 		}
