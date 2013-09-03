@@ -106,13 +106,13 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 			if( metaClass != null ) PropertyUtil.add( t.properties, Predicates.IS_MEMBER_OF, metaClass );
 			
 			for( Command fieldCommand : body.commands ) {
-				ArrayList<Modifier> _fieldModifiers = new ArrayList<Modifier>();
 				for( Parameterized fieldNameParameter : fieldCommand.subject.parameters ) {
 					throw new InterpretError("Field name cannot have parameters", fieldNameParameter.sLoc );
 				}
 				
 				String foreignTypeName = null;
 				Block referenceBody = null;
+				ArrayList<Modifier> _fieldModifiers = new ArrayList<Modifier>();
 				for( Parameterized mod : fieldCommand.modifiers ) {
 					if( "reference".equals(mod.subject.unquotedText()) ) {
 						if( mod.parameters.length != 1 ) {
@@ -136,8 +136,8 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 						}
 						referenceBody = fieldCommand.body;
 					} else {
-						ModifierSpec m = fieldModifiers.get(mod.subject);
-						_fieldModifiers.add(m.bind(SchemaInterpreter.this, mod.parameters, mod.sLoc));
+						ModifierSpec ms = fieldModifiers.get(mod.subject);
+						_fieldModifiers.add( ms.bind( SchemaInterpreter.this, mod.parameters, mod.sLoc ) );
 					}
 				}
 				
@@ -195,15 +195,22 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 						PropertyUtil.add( localField.getProperties(), Predicates.OBJECTS_ARE_MEMBERS_OF, foreignFieldType );
 						
 						fkComponents.add( new ForeignKeySpec.Component(foreignField, localField) );
-						// TODO: Implement rest of this
+						
+						for( Modifier m : _fieldModifiers ) {
+							// This is here so that key(index) or like such as modifiers have their effects
+							// transferred from the reference field to its constituent parts.
+							// It might make sense to disallow other types of modifiers here.
+							if( m instanceof FieldModifier ) {
+								((FieldModifier)m).apply( t, localField );
+							} else {
+								m.apply( localField );
+							}
+						}
 					}
 					
 					t.addForeignKey( new ForeignKeySpec(t.getName()+" "+fieldName, foreignType, fkComponents, fieldCommand.sLoc) );
-					
-					// TODO: build fk 
-					//fkSpec
-					//fieldType = new ForeignKeyReferenceType( singleString(mod.parameters[0], "referenced class name"), Types.REFERENCE, fkSpec);
 				} else {
+					// Note that in this case, _fieldModifiers is ignored; defineSimpleField does its own gathering.
 					f = defineSimpleField( t, fieldCommand );
 				}
 			}
