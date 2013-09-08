@@ -141,7 +141,6 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 					}
 				}
 				
-				FieldSpec f;
 				if( referenceBody != null ) {
 					String fieldName = fieldCommand.subject.subject.unquotedText();
 					
