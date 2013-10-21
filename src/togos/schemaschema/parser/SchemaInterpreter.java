@@ -207,7 +207,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 						}
 					}
 					
-					t.addForeignKey( new ForeignKeySpec(t.getName()+" "+fieldName, foreignType, fkComponents, fieldCommand.sLoc) );
+					t.addForeignKey( new ForeignKeySpec(fieldName, foreignType, fkComponents, fieldCommand.sLoc) );
 				} else {
 					// Note that in this case, _fieldModifiers is ignored; defineSimpleField does its own gathering.
 					defineSimpleField( t, fieldCommand );
