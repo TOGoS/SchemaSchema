@@ -159,6 +159,8 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 					} else if( ")".equals(t.text) ) {
 						this.state = State.DONE;
 						return parent.parameterized( toParameterized() );
+					} else if( "\n".equals(t.text) ) {
+						return this;
 					}
 				}
 				throw unexpectedTokenError(t);
