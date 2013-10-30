@@ -136,9 +136,9 @@ public class SchemaParserTest extends TestCase
 			"  bar\n" +
 			"}\n" +
 			"\n" +
-			"class property X : X\n" +
+			"class property x : X\n" +
 			"\n" +
-			"class Y : X @ foo\n";
+			"class Y : x @ foo\n";
 		
 		sp.parse(source, "(test script)");
 		

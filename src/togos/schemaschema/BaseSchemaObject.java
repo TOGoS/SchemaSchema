@@ -14,10 +14,15 @@ public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 	public Object scalarValue;
 	public final Map<Predicate,Set<SchemaObject>> properties = new LinkedHashMap<Predicate,Set<SchemaObject>>();
 	
-	public static BaseSchemaObject forScalar( Object scalarValue, SourceLocation sLoc ) {
-		BaseSchemaObject obj = new BaseSchemaObject(null, sLoc);
+	public static BaseSchemaObject forScalar( Object scalarValue, String name, Type memberOf, SourceLocation sLoc ) {
+		BaseSchemaObject obj = new BaseSchemaObject(name, sLoc);
 		obj.scalarValue = scalarValue;
+		if( memberOf != null ) PropertyUtil.add(obj.getProperties(), Predicates.IS_MEMBER_OF, memberOf);
 		return obj;
+	}
+	
+	public static BaseSchemaObject forScalar( Object scalarValue, SourceLocation sLoc ) {
+		return forScalar( scalarValue, scalarValue == null ? "null" : scalarValue.toString(), null, sLoc );
 	}
 	
 	public BaseSchemaObject( String name, String longName, SourceLocation sLoc ) {

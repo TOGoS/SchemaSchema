@@ -530,6 +530,10 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject> implements
 	
 	public SchemaInterpreter() { }
 	
+	public void defineThing( SchemaObject v, boolean allowRedefinition ) throws Exception {
+		things.put(v.getName(), v, allowRedefinition, v.getSourceLocation());
+	}
+	
 	public void defineType( Type t, boolean allowRedefinition ) throws Exception {
 		types.put( t.getName(), t, allowRedefinition, t.getSourceLocation() );
 		HashMap<Predicate,Set<SchemaObject>> appliedProperties = new HashMap<Predicate,Set<SchemaObject>>();

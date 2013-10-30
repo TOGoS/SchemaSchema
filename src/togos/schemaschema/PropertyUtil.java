@@ -182,11 +182,11 @@ public class PropertyUtil
 		return val;
 	}
 
-	public static <V> V getFirstInheritedValue( SchemaObject obj, Predicate pred, Class<V> scalarValueClass ) {
+	public static <V> V getFirstInheritedScalar( SchemaObject obj, Predicate pred, Class<V> scalarValueClass ) {
 		return toScalar( getFirstInheritedValue( obj, pred ), scalarValueClass );
 	}
 	
-	public static <V> V getFirstInheritedValue( SchemaObject obj, Predicate pred, Class<V> scalarValueClass, V defaultValue ) {
+	public static <V> V getFirstInheritedScalar( SchemaObject obj, Predicate pred, Class<V> scalarValueClass, V defaultValue ) {
 		SchemaObject val = getFirstInheritedValue( obj, pred, (SchemaObject)null );  
 		return val == null ? defaultValue : toScalar( val, scalarValueClass );
 	}
@@ -196,8 +196,7 @@ public class PropertyUtil
 	}
 	
 	public static boolean getFirstInheritedBoolean( SchemaObject obj, Predicate pred, boolean defaultValue ) {
-		Boolean val = getFirstInheritedValue(obj, pred, Boolean.class, null);
-		return val == null ? defaultValue : val.booleanValue();
+		return getFirstInheritedScalar(obj, pred, Boolean.class, Boolean.FALSE ).booleanValue();
 	}
 	
 	public static SchemaObject getType( SchemaObject obj ) {
