@@ -9,7 +9,7 @@ public class TokenizerTest extends TestCase
 	protected void assertTokenization( String expected, String input ) throws Exception {
 		Collector<Token> c = new Collector<Token>();
 		Tokenizer t = new Tokenizer();
-		t.pipe(c);
+		t.pipeRechecked( c );
 		t.data( input.toCharArray() );
 		t.end();
 		String[] eparts = expected.split("\\|");

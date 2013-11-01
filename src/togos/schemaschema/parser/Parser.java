@@ -8,6 +8,7 @@ import togos.asyncstream.Collector;
 import togos.asyncstream.StreamDestination;
 import togos.lang.BaseSourceLocation;
 import togos.lang.ParseError;
+import togos.lang.ScriptError;
 import togos.lang.SourceLocation;
 import togos.schemaschema.parser.ast.ASTNode;
 import togos.schemaschema.parser.ast.Block;
@@ -17,7 +18,7 @@ import togos.schemaschema.parser.ast.Phrase;
 import togos.schemaschema.parser.ast.Word;
 
 @SuppressWarnings("incomplete-switch")
-public class Parser extends BaseStreamSource<Command> implements StreamDestination<Token>
+public class Parser extends BaseStreamSource<Command, ScriptError> implements StreamDestination<Token, ScriptError>
 {
 	static class UnexpectedWord extends ParseError {
 		private static final long serialVersionUID = 2664614368054031256L;
@@ -52,24 +53,24 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 	}
 	
 	interface ParseState {
-		public ParseState token( Token t ) throws Exception;
-		public ParseState end() throws Exception;
+		public ParseState token( Token t ) throws ScriptError;
+		public ParseState end() throws ScriptError;
 	}
 	
 	interface CommandListParseState extends ParseState {
-		public ParseState command( Command c ) throws Exception;
+		public ParseState command( Command c ) throws ScriptError;
 	}
 	
 	interface ParameterizedListParseState extends ParseState {
-		public ParseState parameterized( Parameterized p ) throws Exception;
+		public ParseState parameterized( Parameterized p ) throws ScriptError;
 	}
 	
 	interface PhraseListParseState extends ParseState {
-		public ParseState phrase( Phrase p ) throws Exception;
+		public ParseState phrase( Phrase p ) throws ScriptError;
 	}
 	
 	interface BlockListParseState extends ParseState {
-		public ParseState block( Block b ) throws Exception;
+		public ParseState block( Block b ) throws ScriptError;
 	}
 	
 	static class PhraseParseState implements ParseState {
@@ -85,12 +86,12 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 			return new Phrase( words.toArray( new Word[words.size()] ), firstSLoc );
 		}
 		
-		@Override public ParseState end() throws Exception {
+		@Override public ParseState end() throws ScriptError {
 			parent.phrase( toPhrase() );
 			return parent.end();
 		}
 		
-		@Override public ParseState token( Token t ) throws Exception {
+		@Override public ParseState token( Token t ) throws ScriptError {
 			if( firstSLoc == BaseSourceLocation.NONE ) firstSLoc = t;
 			
 			switch( t.type ) {
@@ -123,7 +124,7 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 			return new Parameterized( subject, parameters.toArray(new Parameterized[parameters.size()]), firstSLoc );
 		}
 		
-		@Override public ParseState token(Token t) throws Exception {
+		@Override public ParseState token(Token t) throws ScriptError {
 			if( firstSLoc == BaseSourceLocation.NONE ) firstSLoc = t;
 			
 			switch( state ) {
@@ -169,7 +170,7 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 			}
 		}
 		
-		@Override public ParseState phrase( Phrase phrase ) throws Exception {
+		@Override public ParseState phrase( Phrase phrase ) throws ScriptError {
 			switch( state ) {
 			case SUBJECT:
 				if( this.subject != null ) {
@@ -181,7 +182,7 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 			throw new UnexpectedStateException(state);
 		}
 		
-		@Override public ParseState parameterized( Parameterized param ) throws Exception {
+		@Override public ParseState parameterized( Parameterized param ) throws ScriptError {
 			switch( state ) {
 			case PARAMS:
 				this.parameters.add( param );
@@ -197,7 +198,7 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 			throw new UnexpectedStateException(state);
 		}
 		
-		@Override public ParseState end() throws Exception {
+		@Override public ParseState end() throws ScriptError {
 			if( state == State.PARAMS ) throw new UnexpectedEndError(firstSLoc);
 			return parent.parameterized( toParameterized() ).end();
 		}
@@ -216,7 +217,7 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 			return new Block( commands.toArray(new Command[commands.size()]), firstSLoc );
 		}
 		
-		@Override public ParseState token(Token t) throws Exception {
+		@Override public ParseState token(Token t) throws ScriptError {
 			if( firstSLoc == BaseSourceLocation.NONE ) firstSLoc = t;
 			
 			switch( t.type ) {
@@ -231,12 +232,12 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 			}
 		}
 		
-		@Override public ParseState command(Command c) throws Exception {
+		@Override public ParseState command(Command c) {
 			commands.add(c);
 			return this;
 		}
 		
-		@Override public ParseState end() throws Exception {
+		@Override public ParseState end() throws ScriptError {
 			return parent.block( toBlock() ).end();
 		}
 	}
@@ -262,7 +263,7 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 			return new Block( Block.EMPTY.commands, sLoc );
 		}
 		
-		@Override public ParseState token(Token t) throws Exception {
+		@Override public ParseState token(Token t) throws ScriptError {
 			if( firstSLoc == BaseSourceLocation.NONE ) firstSLoc = t;
 			
 			switch( state ) {
@@ -327,7 +328,7 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 			}
 		}
 		
-		@Override public ParseState parameterized(Parameterized pize) throws Exception {
+		@Override public ParseState parameterized(Parameterized pize) throws ScriptError {
 			switch( state ) {
 			case SUBJECT:
 				subject = pize;
@@ -339,13 +340,13 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 			throw new UnexpectedStateException(state);
 		}
 		
-		@Override public ParseState block(Block block) throws Exception {
+		@Override public ParseState block(Block block) throws ScriptError {
 			if( state != State.BODY ) throw new UnexpectedStateException(state);
 			this.body = block;
 			return this;
 		}
 		
-		@Override public ParseState end() throws Exception {
+		@Override public ParseState end() throws ScriptError {
 			switch( state ) {
 			case BODY:
 				throw new UnexpectedEndError( firstSLoc );
@@ -353,7 +354,7 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 			return parent.command( toCommand() ).end(); 
 		}
 		
-		@Override public ParseState command(Command command) throws Exception {
+		@Override public ParseState command(Command command) throws ScriptError {
 			if( state != State.SINGLE_COMMAND ) throw new UnexpectedStateException(state);
 			this.body = new Block( new Command[]{ command }, command.sLoc );
 			this.state = State.DONE;
@@ -362,7 +363,7 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 	}
 	
 	class RootParseState implements CommandListParseState {
-		@Override public ParseState token(Token t) throws Exception {
+		@Override public ParseState token(Token t) throws ScriptError {
 			switch( t.type ) {
 			case SYMBOL:
 				if( "\n".equals(t.text) ) {
@@ -375,12 +376,12 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 			}
 		}
 		
-		@Override public ParseState end() throws Exception {
+		@Override public ParseState end() throws ScriptError {
 			_end();
 			return this;
 		}
 		
-		public ParseState command( Command c ) throws Exception {
+		public ParseState command( Command c ) throws ScriptError {
 			_data( c );
 			return this;
 		}
@@ -388,24 +389,24 @@ public class Parser extends BaseStreamSource<Command> implements StreamDestinati
 	
 	ParseState parseState = new RootParseState();
 	
-	@Override public void data( Token t ) throws Exception {
+	@Override public void data( Token t ) throws ScriptError {
 		parseState = parseState.token( t );
 	}
 
-	@Override public void end() throws Exception {
+	@Override public void end() throws ScriptError {
 		parseState = parseState.end();
 	}	
 	
 	/**
 	 * Convenience method for parsing a single class from a string.
 	 */
-	public static ASTNode parseCommand( String commandSource, SourceLocation sLoc ) throws Exception {
+	public static ASTNode parseCommand( String commandSource, SourceLocation sLoc ) throws ScriptError {
 		Tokenizer t = new Tokenizer();
 		t.setSourceLocation( sLoc );
 		Parser p = new Parser();
 		ArrayList<ASTNode> destList = new ArrayList<ASTNode>();
 		Collector<ASTNode> collector = new Collector<ASTNode>(destList);
-		p.pipe( collector );
+		p.pipeRechecked( collector );
 		t.pipe( p );
 		t.data( commandSource.toCharArray() );
 		t.end();

@@ -1,5 +1,6 @@
 package togos.schemaschema.parser;
 
+import java.io.IOException;
 import java.io.InputStreamReader;
 
 import togos.asyncstream.BaseStreamSource;
@@ -7,9 +8,10 @@ import togos.asyncstream.StreamDestination;
 import togos.asyncstream.StreamUtil;
 import togos.lang.BaseSourceLocation;
 import togos.lang.ParseError;
+import togos.lang.ScriptError;
 import togos.lang.SourceLocation;
 
-public class Tokenizer extends BaseStreamSource<Token> implements StreamDestination<char[]>
+public class Tokenizer extends BaseStreamSource<Token,ScriptError> implements StreamDestination<char[],ScriptError>
 {
 	enum State {
 		NO_TOKEN,
@@ -91,7 +93,7 @@ public class Tokenizer extends BaseStreamSource<Token> implements StreamDestinat
 		return !isSymbol(c) && !isWhitespace(c) && !isQuote(c) && !isComment(c);
 	}
 	
-	protected void data( char c ) throws Exception {
+	protected void data( char c ) throws ScriptError {
 		switch( state ) {
 		case SINGLE_QUOTED_STRING_ESCAPE:
 		case DOUBLE_QUOTED_STRING_ESCAPE:
@@ -199,7 +201,7 @@ public class Tokenizer extends BaseStreamSource<Token> implements StreamDestinat
 		}
 	}
 	
-	protected void flushToken( State newState ) throws Exception {
+	protected void flushToken( State newState ) throws ScriptError {
 		if( state.tokenType != null ) {
 			_data( new Token( state.tokenType, new String(tokenBuffer,0,length), filename, lineNumber, columnNumber ) );
 		}
@@ -208,27 +210,24 @@ public class Tokenizer extends BaseStreamSource<Token> implements StreamDestinat
 	}
 	
 	@Override
-    public void data( char[] value ) throws Exception {
+    public void data( char[] value ) throws ScriptError {
 		for( char c : value ) data(c);
     }
 	
 	@Override
-    public void end() throws Exception {
+    public void end() throws ScriptError {
 		flushToken( State.NO_TOKEN );
 		_end();
     }
 	
-	public static void main(String[] args) throws Exception {
+	public static void main(String[] args) throws IOException, ScriptError {
 		Tokenizer t = new Tokenizer();
-		t.pipe(new StreamDestination<Token>() {
-			@Override
-            public void data( Token value ) throws Exception {
+		t.pipe(new StreamDestination<Token,ScriptError>() {
+			@Override public void data( Token value ) {
 				System.out.println("Token: '"+value.text+"'");
             }
 
-			@Override
-            public void end() throws Exception {
-            }
+			@Override public void end() { }
 		});
 		StreamUtil.pipe( new InputStreamReader(System.in), t, true );
 	}

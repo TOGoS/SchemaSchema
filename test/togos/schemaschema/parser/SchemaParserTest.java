@@ -5,7 +5,7 @@ import static togos.schemaschema.PropertyUtil.isTrue;
 import java.util.Map;
 
 import junit.framework.TestCase;
-import togos.lang.InterpretError;
+import togos.lang.RuntimeError;
 import togos.lang.ScriptError;
 import togos.schemaschema.ComplexType;
 import togos.schemaschema.EnumType;
@@ -174,7 +174,7 @@ public class SchemaParserTest extends TestCase
 		try {
 			sp.parse("class Y : X @ barrrr\n", "(more test script)");
 			fail("Inalid enum value should have thrown InterpretError");
-		} catch( InterpretError e ) { }
+		} catch( RuntimeError e ) { }
 	}
 	
 	public void testFieldModifier() throws ScriptError {
