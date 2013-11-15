@@ -210,19 +210,22 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 							// This is here so that key(index) or like such as modifiers have their effects
 							// transferred from the reference field to its constituent parts.
 							// It might make sense to disallow other types of modifiers here.
-							if( m instanceof ReferenceModifier ) {
-							} else if( m instanceof FieldModifier ) {
-								((FieldModifier)m).apply( t, localField );
-							} else {
-								m.apply( localField );
+							switch( m.getTarget() ) {
+							case REFERENCE: break;
+							default:
+								if( m instanceof FieldModifier ) {
+									((FieldModifier)m).apply( t, localField );
+								} else {
+									m.apply( localField );
+								}
 							}
 						}
 					}
 					
 					ForeignKeySpec fk = new ForeignKeySpec(fieldName, foreignType, fkComponents, fieldCommand.sLoc);
 					
-					for( Modifier m : _fieldModifiers ) if( m instanceof ReferenceModifier ) {
-						((ReferenceModifier)m).apply( t, fk );
+					for( Modifier m : _fieldModifiers ) if( m.getTarget() == Modifier.ApplicationTarget.REFERENCE ) {
+						m.apply( fk );
 					}
 					
 					t.addForeignKey( fk );
@@ -305,14 +308,16 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 	
 	class PropertyDefinitionCommandInterpreter extends DefinitionCommandInterpreter {
 		final SymbolLookupContext<ModifierSpec> modifierLookupContext;
+		final Modifier.ApplicationTarget at;
 		
-		public PropertyDefinitionCommandInterpreter( SymbolLookupContext<ModifierSpec> modifierLookupContext ) {
+		public PropertyDefinitionCommandInterpreter( SymbolLookupContext<ModifierSpec> modifierLookupContext, Modifier.ApplicationTarget at ) {
 			this.modifierLookupContext = modifierLookupContext;
+			this.at = at;
 		}
 		
 		protected void definePredicate( Predicate pred, boolean allowRedefinition ) throws CompileError {
 			predicates.put( pred.getName(), pred, allowRedefinition, pred.getSourceLocation() );
-			defineModifier( modifierLookupContext, pred.getName(), new SimplePredicateModifierSpec(pred), allowRedefinition, pred.getSourceLocation() );
+			defineModifier( modifierLookupContext, pred.getName(), new SimplePredicateModifierSpec(pred, at), allowRedefinition, pred.getSourceLocation() );
 			_data( pred );
 		}
 		
@@ -339,11 +344,19 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 	}
 	
 	interface Modifier {
+		/**
+		 * Sometimes the thing which is being modified is ambiguous.
+		 * Modifiers return one of these to give a hint.
+		 */
+		enum ApplicationTarget {
+			WHATEVER,
+			CLASS,
+			FIELD,
+			REFERENCE
+		}
+		
+		public ApplicationTarget getTarget();
 		public void apply( SchemaObject subject );
-	}
-	
-	interface ReferenceModifier extends Modifier {
-		public void apply( ComplexType classObject, ForeignKeySpec fkSpec );
 	}
 	
 	interface FieldModifier extends Modifier {
@@ -352,9 +365,11 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 	
 	public static class SimplePredicateModifierSpec implements ModifierSpec {
 		final Predicate predicate;
+		final Modifier.ApplicationTarget at;
 		
-		public SimplePredicateModifierSpec( Predicate p ) {
+		public SimplePredicateModifierSpec( Predicate p, Modifier.ApplicationTarget at ) {
 			this.predicate = p;
+			this.at = at;
 		}
 		
 		@Override public Modifier bind(SchemaInterpreter sp, Parameterized[] params, SourceLocation sLoc) throws CompileError {
@@ -368,7 +383,10 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 			}
 			
 			return new Modifier() {
-				public void apply(SchemaObject subject) {
+				@Override public ApplicationTarget getTarget() {
+					return at;
+				}
+				@Override public void apply(SchemaObject subject) {
 					PropertyUtil.addAll( subject.getProperties(), predicate, values );					
 				}
 			};
@@ -391,6 +409,13 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 				throw new CompileError(name+" modifier takes no arguments", params[0].sLoc);
 			}
 			return this;
+		}
+		
+		@Override
+		public ApplicationTarget getTarget() {
+			// With the current architecture it's not possible to have multiple
+			// targets in an alias.  :P
+			return Modifier.ApplicationTarget.WHATEVER;
 		}
 		
 		@Override
@@ -417,6 +442,10 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 			}
 
 			return new FieldModifier() {
+				@Override public ApplicationTarget getTarget() {
+					return Modifier.ApplicationTarget.FIELD;
+				}
+				
 				@Override
 				public void apply(SchemaObject subject) {
 					throw new UnsupportedOperationException("Index field modifier doesn't support apply(subject) -- use the other apply method");
@@ -454,6 +483,10 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 				}
 			}
 			return new Modifier() {
+				@Override public ApplicationTarget getTarget() {
+					return Modifier.ApplicationTarget.FIELD;
+				}
+				
 				@Override public void apply(SchemaObject subject) {
 					EnumType er = new EnumType(subject.getName(), sLoc);
 					for( Parameterized p : params ) {
@@ -592,28 +625,28 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 		defineModifier(classModifiers, name, spec, false, BaseSourceLocation.NONE );
 	}
 	
-	protected void definePredicate( Predicate pred, SymbolLookupContext<ModifierSpec> modifierContext, boolean allowRedefinition )
+	protected void definePredicate( Predicate pred, SymbolLookupContext<ModifierSpec> modifierContext, Modifier.ApplicationTarget at, boolean allowRedefinition )
 		throws CompileError
 	{
 		predicates.put( pred.getName(), pred, false, pred.getSourceLocation() );
-		defineModifier( modifierContext, pred.getName(), new SimplePredicateModifierSpec(pred), false, pred.getSourceLocation() );
+		defineModifier( modifierContext, pred.getName(), new SimplePredicateModifierSpec(pred, at), false, pred.getSourceLocation() );
 		_data( pred );
 	}
 	
 	public void defineReferencePredicate( Predicate pred ) throws CompileError {
-		definePredicate( pred, referenceModifiers, false );
+		definePredicate( pred, referenceModifiers, Modifier.ApplicationTarget.REFERENCE, false );
 	}
 	
 	public void defineFieldPredicate( Predicate pred ) throws CompileError {
-		definePredicate( pred, fieldModifiers, false );
+		definePredicate( pred, fieldModifiers, Modifier.ApplicationTarget.FIELD, false );
 	}
 	
 	public void defineClassPredicate( Predicate pred ) throws CompileError {
-		definePredicate( pred, classModifiers, false );
+		definePredicate( pred, classModifiers, Modifier.ApplicationTarget.WHATEVER, false );
 	}
 	
 	public void defineGenericPredicate( Predicate pred ) throws CompileError {
-		definePredicate( pred, generalModifiers, false );
+		definePredicate( pred, generalModifiers, Modifier.ApplicationTarget.WHATEVER, false );
 	}
 	
 	public void defineCommand( String name, CommandInterpreter interpreter, boolean allowRedefinition, SourceLocation sLoc )
@@ -759,6 +792,11 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 					throw new CompileError("Custom "+predefinedModifiers.name+" '"+name+"' takes no parameters", sLoc);
 				}
 				return new FieldModifier() {
+					@Override public ApplicationTarget getTarget() {
+						// Might want to allow specification of this somehow, someday
+						return ApplicationTarget.WHATEVER;
+					}
+					
 					@Override
 					public void apply( ComplexType classObject, FieldSpec fieldSpec ) {
 						for( Modifier m : subModifiers ) {
