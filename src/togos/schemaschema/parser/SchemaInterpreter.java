@@ -114,6 +114,9 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 				String foreignTypeName = null;
 				Block referenceBody = null;
 				ArrayList<Modifier> _fieldModifiers = new ArrayList<Modifier>();
+				
+				boolean isReferenceField = false;
+				ArrayList<Parameterized> normalModifiers = new ArrayList<Parameterized>();
 				for( Parameterized mod : fieldCommand.modifiers ) {
 					if( "reference".equals(mod.subject.unquotedText()) ) {
 						if( mod.parameters.length != 1 ) {
@@ -135,11 +138,18 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 								fieldCommand.body.sLoc
 							);
 						}
+						isReferenceField = true;
 						referenceBody = fieldCommand.body;
 					} else {
-						ModifierSpec ms = fieldModifiers.get(mod.subject);
-						_fieldModifiers.add( ms.bind( SchemaInterpreter.this, mod.parameters, mod.sLoc ) );
+						normalModifiers.add(mod);
 					}
+				}
+				
+				SymbolLookupContext<ModifierSpec> modifierLookupContext = isReferenceField ? referenceModifiers : fieldModifiers;
+				
+				for( Parameterized mod : normalModifiers ) {
+					ModifierSpec ms = modifierLookupContext.get(mod.subject);
+					_fieldModifiers.add( ms.bind( SchemaInterpreter.this, mod.parameters, mod.sLoc ) );
 				}
 				
 				if( referenceBody != null ) {
@@ -200,7 +210,8 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 							// This is here so that key(index) or like such as modifiers have their effects
 							// transferred from the reference field to its constituent parts.
 							// It might make sense to disallow other types of modifiers here.
-							if( m instanceof FieldModifier ) {
+							if( m instanceof ReferenceModifier ) {
+							} else if( m instanceof FieldModifier ) {
 								((FieldModifier)m).apply( t, localField );
 							} else {
 								m.apply( localField );
@@ -208,7 +219,13 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 						}
 					}
 					
-					t.addForeignKey( new ForeignKeySpec(fieldName, foreignType, fkComponents, fieldCommand.sLoc) );
+					ForeignKeySpec fk = new ForeignKeySpec(fieldName, foreignType, fkComponents, fieldCommand.sLoc);
+					
+					for( Modifier m : _fieldModifiers ) if( m instanceof ReferenceModifier ) {
+						((ReferenceModifier)m).apply( t, fk );
+					}
+					
+					t.addForeignKey( fk );
 				} else {
 					// Note that in this case, _fieldModifiers is ignored; defineSimpleField does its own gathering.
 					defineSimpleField( t, fieldCommand );
@@ -323,6 +340,10 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 	
 	interface Modifier {
 		public void apply( SchemaObject subject );
+	}
+	
+	interface ReferenceModifier extends Modifier {
+		public void apply( ComplexType classObject, ForeignKeySpec fkSpec );
 	}
 	
 	interface FieldModifier extends Modifier {
@@ -526,6 +547,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 	protected SymbolLookupContext<Predicate> predicates = new SymbolLookupContext<Predicate>(things, "predicate", Predicate.class);
 	protected SymbolLookupContext<ModifierSpec> generalModifiers = new SymbolLookupContext<ModifierSpec>(null, "general modifier", ModifierSpec.class);
 	protected SymbolLookupContext<ModifierSpec> fieldModifiers = new SymbolLookupContext<ModifierSpec>(generalModifiers, "field modifier", ModifierSpec.class);
+	protected SymbolLookupContext<ModifierSpec> referenceModifiers = new SymbolLookupContext<ModifierSpec>(fieldModifiers, "reference modifier", ModifierSpec.class);
 	protected SymbolLookupContext<ModifierSpec> classModifiers = new SymbolLookupContext<ModifierSpec>(generalModifiers, "class modifier", ModifierSpec.class);
 	protected SymbolLookupContext<CommandInterpreter> commandInterpreters = new SymbolLookupContext<CommandInterpreter>(null, "command interpreter", CommandInterpreter.class); 
 	
@@ -576,6 +598,10 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 		predicates.put( pred.getName(), pred, false, pred.getSourceLocation() );
 		defineModifier( modifierContext, pred.getName(), new SimplePredicateModifierSpec(pred), false, pred.getSourceLocation() );
 		_data( pred );
+	}
+	
+	public void defineReferencePredicate( Predicate pred ) throws CompileError {
+		definePredicate( pred, referenceModifiers, false );
 	}
 	
 	public void defineFieldPredicate( Predicate pred ) throws CompileError {
