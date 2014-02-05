@@ -24,6 +24,4 @@ public class Types
 	public static final Type OBJECT    = defineType(NS, "object");
 	public static final Type FIELD     = defineType(NS, "field");
 	public static final Type PREDICATE = defineType(NS, "predicate");
-	public static final Type INDEX     = defineType(NS, "index");
-	public static final Type FOREIGN_KEY = defineType(NS, "foreign key");
 }

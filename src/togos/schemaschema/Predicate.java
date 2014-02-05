@@ -18,7 +18,9 @@ public class Predicate extends BaseSchemaObject
 
 	public Predicate(String name, String longName, Type objectType, SourceLocation sLoc) {
 		super(name, longName, sLoc);
-		this.addObjectType(objectType);
+		if( objectType != null ) {
+			this.addObjectType(objectType);
+		}
 	}
 	
 	public void addObjectType(Type t) {

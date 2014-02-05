@@ -31,6 +31,7 @@ import togos.schemaschema.PropertyUtil;
 import togos.schemaschema.SchemaObject;
 import togos.schemaschema.Type;
 import togos.schemaschema.namespaces.Core;
+import togos.schemaschema.namespaces.RDB;
 import togos.schemaschema.namespaces.Types;
 import togos.schemaschema.parser.SchemaInterpreter.Modifier.ApplicationTarget;
 import togos.schemaschema.parser.ast.Block;
@@ -301,7 +302,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 				m.bind(SchemaInterpreter.this, mod.parameters, mod.sLoc).apply(t);
 			}
 			
-			if( isTrue(t, Core.IS_SELF_KEYED) ) {
+			if( isTrue(t, RDB.IS_SELF_KEYED) ) {
 				t.addIndex(new IndexSpec("primary", t.getFields(), sLoc));
 			}
 			
