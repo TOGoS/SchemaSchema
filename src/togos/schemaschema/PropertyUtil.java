@@ -7,6 +7,9 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
+import togos.schemaschema.namespaces.Core;
+import togos.schemaschema.namespaces.Types;
+
 public class PropertyUtil
 {
 	//// Modify proprety lists
@@ -61,7 +64,7 @@ public class PropertyUtil
 	}
 	
 	public static boolean isMemberOf( SchemaObject obj, Type t ) {
-		if( hasValue( obj.getProperties(), Predicates.IS_MEMBER_OF, t ) ) return true;
+		if( hasValue( obj.getProperties(), Core.TYPE, t ) ) return true;
 		for( Type pt : t.getExtendedTypes() ) {
 			if( isMemberOf( obj, pt ) ) return true;
 		}
@@ -108,7 +111,7 @@ public class PropertyUtil
 	}
 	
 	protected static void getAllInheritedValues(SchemaObject subject, Predicate pred, Set<SchemaObject> dest) {
-		for( Object parent : getAll(subject.getProperties(), Predicates.EXTENDS) ) {
+		for( Object parent : getAll(subject.getProperties(), Core.EXTENDS) ) {
 			if( parent instanceof SchemaObject ) {
 				getAllInheritedValues( (SchemaObject)parent, pred, dest );
 			}
@@ -142,7 +145,7 @@ public class PropertyUtil
 			Set<SchemaObject> values = PropertyUtil.getAll(obj.getProperties(), pred);
 			if( values.size() > 0 ) return values;
 			
-			Set<?> extended = PropertyUtil.getAll(obj.getProperties(), Predicates.EXTENDS);
+			Set<?> extended = PropertyUtil.getAll(obj.getProperties(), Core.EXTENDS);
 			
 			SchemaObject extendedObj = null;
 			for( Object o : extended ) {
@@ -200,11 +203,11 @@ public class PropertyUtil
 	}
 	
 	public static SchemaObject getType( SchemaObject obj ) {
-		return getFirstInheritedValue( obj, Predicates.IS_MEMBER_OF, Types.OBJECT );
+		return getFirstInheritedValue( obj, Core.TYPE, Types.OBJECT );
 	}
 	
 	public static boolean isMemberOfClassWith( SchemaObject obj, Predicate classPred ) {
-		for( SchemaObject clash : getAllInheritedValues( obj, Predicates.IS_MEMBER_OF ) ) {
+		for( SchemaObject clash : getAllInheritedValues( obj, Core.TYPE ) ) {
 			if( isTrue(clash, classPred) ) return true;
 		}
 		return false;

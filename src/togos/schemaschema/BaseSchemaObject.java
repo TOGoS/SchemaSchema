@@ -5,11 +5,12 @@ import java.util.Map;
 import java.util.Set;
 
 import togos.lang.SourceLocation;
+import togos.schemaschema.namespaces.Core;
 
 public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 {
 	protected final SourceLocation sLoc;
-	protected final String name;
+	protected String name;
 	protected String longName;
 	public Object scalarValue;
 	public final Map<Predicate,Set<SchemaObject>> properties = new LinkedHashMap<Predicate,Set<SchemaObject>>();
@@ -17,7 +18,7 @@ public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 	public static BaseSchemaObject forScalar( Object scalarValue, String name, Type memberOf, SourceLocation sLoc ) {
 		BaseSchemaObject obj = new BaseSchemaObject(name, sLoc);
 		obj.scalarValue = scalarValue;
-		if( memberOf != null ) PropertyUtil.add(obj.getProperties(), Predicates.IS_MEMBER_OF, memberOf);
+		if( memberOf != null ) PropertyUtil.add(obj.getProperties(), Core.TYPE, memberOf);
 		return obj;
 	}
 	
@@ -29,6 +30,9 @@ public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 		this.name = name;
 		this.longName = longName;
 		this.sLoc = sLoc;
+		// TODO: name and long name should show up in properties,
+		// but that has some circular dependencies when defining
+		// those predicates themselves.
 	}
 		
 	public BaseSchemaObject( String name, SourceLocation sLoc ) {
@@ -37,7 +41,7 @@ public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 	
 	public BaseSchemaObject( String name, Type type, SourceLocation sLoc ) {
 		this( name, sLoc );
-		PropertyUtil.add( properties, Predicates.IS_MEMBER_OF, type );
+		PropertyUtil.add( properties, Core.TYPE, type );
 	}
 	
 	@Override public SourceLocation getSourceLocation() { return sLoc; }
@@ -50,7 +54,7 @@ public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 	 * Not intended to be useful by non-Type objects.
 	 **/
 	public Set<Type> getExtendedTypes() {
-		return PropertyUtil.getAll( properties, Predicates.EXTENDS, Type.class );
+		return PropertyUtil.getAll( properties, Core.EXTENDS, Type.class );
 	}
 	
 	@Override public int compareTo(SchemaObject o) {

@@ -25,12 +25,13 @@ import togos.schemaschema.EnumType;
 import togos.schemaschema.FieldSpec;
 import togos.schemaschema.ForeignKeySpec;
 import togos.schemaschema.IndexSpec;
+import togos.schemaschema.Namespace;
 import togos.schemaschema.Predicate;
-import togos.schemaschema.Predicates;
 import togos.schemaschema.PropertyUtil;
 import togos.schemaschema.SchemaObject;
 import togos.schemaschema.Type;
-import togos.schemaschema.Types;
+import togos.schemaschema.namespaces.Core;
+import togos.schemaschema.namespaces.Types;
 import togos.schemaschema.parser.SchemaInterpreter.Modifier.ApplicationTarget;
 import togos.schemaschema.parser.ast.Block;
 import togos.schemaschema.parser.ast.Command;
@@ -115,13 +116,14 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 				if( thing == null ) {
 					throw new CompileError("Import failed; couldn't find '"+origin+"'", cmd.sLoc);
 				}
-				if( !(thing instanceof Map) ) {
-					throw new CompileError("Import failed; '"+origin+"' is not a Map", cmd.sLoc);
+				if( !(thing instanceof Namespace) ) {
+					throw new CompileError("Import failed; '"+origin+"' is not a Namespace", cmd.sLoc);
 				}
-				for( Map.Entry<?,?> ent : ((Map<?,?>)thing).entrySet() ) {
-					String k = ent.getKey().toString();
-					Object v = ent.getValue();
-					defineSomething(k, v, false, cmd.sLoc);
+				for( Object obj : ((Namespace)thing).items.values() ) {
+					if( obj instanceof SchemaObject ) {
+						SchemaObject so = (SchemaObject)obj;
+						defineSomething(so.getName(), so, false, cmd.sLoc);
+					}
 				}
 			} else {
 				throw new CompileError("Malformed import statement: "+cmd.toString(), cmd.sLoc );
@@ -163,7 +165,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 			throws CompileError
 		{
 			ComplexType t = new ComplexType( name, sLoc );
-			if( metaClass != null ) PropertyUtil.add( t.properties, Predicates.IS_MEMBER_OF, metaClass );
+			if( metaClass != null ) PropertyUtil.add( t.properties, Core.TYPE, metaClass );
 			
 			for( Command fieldCommand : body.commands ) {
 				for( Parameterized fieldNameParameter : fieldCommand.subject.parameters ) {
@@ -261,7 +263,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 								);
 							}
 						}
-						PropertyUtil.add( localField.getProperties(), Predicates.OBJECTS_ARE_MEMBERS_OF, foreignFieldType );
+						PropertyUtil.add( localField.getProperties(), Core.VALUE_TYPE, foreignFieldType );
 						
 						fkComponents.add( new ForeignKeySpec.Component(foreignField, localField) );
 						
@@ -299,7 +301,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 				m.bind(SchemaInterpreter.this, mod.parameters, mod.sLoc).apply(t);
 			}
 			
-			if( isTrue(t, Predicates.IS_SELF_KEYED) ) {
+			if( isTrue(t, Core.IS_SELF_KEYED) ) {
 				t.addIndex(new IndexSpec("primary", t.getFields(), sLoc));
 			}
 			
@@ -311,7 +313,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 			
 			defineType( t, allowRedefinition );
 			CommandInterpreter instanceInterpreter;
-			if( PropertyUtil.getFirstInheritedValue(t, Predicates.EXTENDS, (SchemaObject)null) == Types.CLASS ) {
+			if( PropertyUtil.getFirstInheritedValue(t, Core.EXTENDS, (SchemaObject)null) == Types.CLASS ) {
 				// If the defined class extends class, then instances will themselves be classes
 				// and can use ClassDefinitionCommandInterpreter
 				instanceInterpreter = new ClassDefinitionCommandInterpreter( t );
@@ -642,7 +644,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 	protected SymbolLookupContext<ModifierSpec> referenceModifiers = new SymbolLookupContext<ModifierSpec>(fieldModifiers, "reference modifier", ModifierSpec.class);
 	protected SymbolLookupContext<ModifierSpec> classModifiers = new SymbolLookupContext<ModifierSpec>(generalModifiers, "class modifier", ModifierSpec.class);
 	protected SymbolLookupContext<CommandInterpreter> commandInterpreters = new SymbolLookupContext<CommandInterpreter>(null, "command interpreter", CommandInterpreter.class);
-	protected Map<String, Object> importables = new HashMap<String, Object>();
+	protected Namespace importables = new Namespace("");
 	
 	public SchemaInterpreter() { }
 	
@@ -658,8 +660,8 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 	public void defineType( String name, Type t, boolean allowRedefinition ) throws CompileError {
 		types.put( name, t, allowRedefinition, t.getSourceLocation() );
 		HashMap<Predicate,Set<SchemaObject>> appliedProperties = new HashMap<Predicate,Set<SchemaObject>>();
-		PropertyUtil.add(appliedProperties, Predicates.OBJECTS_ARE_MEMBERS_OF, t);
-		fieldModifiers.put( name, new AliasModifier(Predicates.OBJECTS_ARE_MEMBERS_OF.getName(), appliedProperties), allowRedefinition, t.getSourceLocation() );
+		PropertyUtil.add(appliedProperties, Core.VALUE_TYPE, t);
+		fieldModifiers.put( name, new AliasModifier(Core.VALUE_TYPE.getName(), appliedProperties), allowRedefinition, t.getSourceLocation() );
 		_data( t );
 	}
 	
@@ -753,8 +755,8 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 		}
 	}
 	
-	public void defineImportable( String name, Object v ) {
-		importables.put(name, v);
+	public void defineImportable( Namespace ns ) {
+		importables.addNamespace(ns);
 	}
 	
 	protected SchemaObject evaluate( SchemaObject v, Parameterized[] parameters ) throws CompileError {

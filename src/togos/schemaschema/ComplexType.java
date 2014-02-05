@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.Set;
 
 import togos.lang.SourceLocation;
+import togos.schemaschema.namespaces.Core;
 import togos.schemaschema.parser.ast.Phrase;
 import togos.schemaschema.parser.ast.Word;
 
@@ -19,7 +20,7 @@ public class ComplexType extends BaseSchemaObject implements Type
 	}
 	
 	public Collection<FieldSpec> getFields() {
-		return PropertyUtil.getAllInheritedValuesOfClass(this, Predicates.HAS_FIELD, FieldSpec.class);
+		return PropertyUtil.getAllInheritedValuesOfClass(this, Core.HAS_FIELD, FieldSpec.class);
 	}
 	public FieldSpec getField(String name) {
 		for( FieldSpec f : getFields() ) if( name.equals(f.getName())) return f;
@@ -29,11 +30,11 @@ public class ComplexType extends BaseSchemaObject implements Type
 		return getField(name) != null;
 	}
 	public void addField(FieldSpec fieldSpec) {
-		PropertyUtil.add(this.getProperties(), Predicates.HAS_FIELD, fieldSpec);
+		PropertyUtil.add(this.getProperties(), Core.HAS_FIELD, fieldSpec);
 	}
 	
 	public Collection<IndexSpec> getIndexes() {
-		return PropertyUtil.getAllInheritedValuesOfClass(this, Predicates.HAS_INDEX, IndexSpec.class);
+		return PropertyUtil.getAllInheritedValuesOfClass(this, Core.HAS_INDEX, IndexSpec.class);
 	}
 	public IndexSpec getIndex(String name) {
 		for( IndexSpec i : getIndexes() ) if(name.equals(i.getName())) return i;
@@ -43,14 +44,14 @@ public class ComplexType extends BaseSchemaObject implements Type
 		return getIndex(name) != null;
 	}
 	public void addIndex(IndexSpec indexSpec) {
-		PropertyUtil.add(this.getProperties(), Predicates.HAS_INDEX, indexSpec);
+		PropertyUtil.add(this.getProperties(), Core.HAS_INDEX, indexSpec);
 	}
 	
 	public Collection<ForeignKeySpec> getForeignKeys() {
-		return PropertyUtil.getAllInheritedValuesOfClass(this, Predicates.HAS_FOREIGN_KEY, ForeignKeySpec.class);
+		return PropertyUtil.getAllInheritedValuesOfClass(this, Core.HAS_FOREIGN_KEY, ForeignKeySpec.class);
 	}
 	public void addForeignKey( ForeignKeySpec fks ) {
-		PropertyUtil.add(this.getProperties(), Predicates.HAS_FOREIGN_KEY, fks);
+		PropertyUtil.add(this.getProperties(), Core.HAS_FOREIGN_KEY, fks);
 	}
 	
 	public String toString() {

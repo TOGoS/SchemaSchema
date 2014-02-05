@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.Set;
 
 import togos.lang.SourceLocation;
+import togos.schemaschema.namespaces.Core;
 import togos.schemaschema.parser.ast.Phrase;
 
 public class FieldSpec extends Predicate
@@ -13,11 +14,11 @@ public class FieldSpec extends Predicate
 	}
 	
 	public Set<Type> getObjectTypes() {
-		return PropertyUtil.getAll(properties, Predicates.OBJECTS_ARE_MEMBERS_OF, Type.class);
+		return PropertyUtil.getAll(properties, Core.VALUE_TYPE, Type.class);
 	}
 	
 	public Type getObjectType() {
-		Set<Type> s = PropertyUtil.getAll(properties, Predicates.OBJECTS_ARE_MEMBERS_OF, Type.class);
+		Set<Type> s = PropertyUtil.getAll(properties, Core.VALUE_TYPE, Type.class);
 		if( s.size() > 1 ) {
 			throw new RuntimeException("Field '"+name+"' specifies more than one object type");
 		}
@@ -29,7 +30,7 @@ public class FieldSpec extends Predicate
 		String s = Phrase.quoteIfNecessary(name);
 		for( Map.Entry<Predicate,Set<SchemaObject>> e : properties.entrySet() ) {
 			for( Object v : e.getValue() ) {
-				if( e.getKey() == Predicates.OBJECTS_ARE_MEMBERS_OF ) {
+				if( e.getKey() == Core.VALUE_TYPE ) {
 					s += " : " + PropertyUtil.objectToString(v);
 				} else {
 					s += " : " + PropertyUtil.pairToString( e.getKey(), v );

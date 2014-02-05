@@ -1,12 +1,13 @@
 package togos.schemaschema;
 
 import togos.lang.SourceLocation;
+import togos.schemaschema.namespaces.Core;
 
 public class SimpleType extends BaseSchemaObject implements Type
 {
-	public SimpleType( String name, Type parent, SourceLocation sLoc ) {
+	public SimpleType( String name, Type typeType, SourceLocation sLoc ) {
 		super(name, sLoc);
-		if( parent != null ) PropertyUtil.add( properties, Predicates.IS_MEMBER_OF, parent );
+		if( typeType != null ) PropertyUtil.add( properties, Core.TYPE, typeType );
 	}
 	
 	public SimpleType( String name, SourceLocation sLoc ) {

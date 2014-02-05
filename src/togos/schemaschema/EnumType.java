@@ -5,6 +5,7 @@ import java.util.Set;
 
 import togos.lang.BaseSourceLocation;
 import togos.lang.SourceLocation;
+import togos.schemaschema.namespaces.Core;
 import togos.schemaschema.parser.ast.Word;
 
 public class EnumType extends ComplexType
@@ -15,7 +16,7 @@ public class EnumType extends ComplexType
 	
 	public EnumType( String name, SourceLocation sLoc ) {
 		super(name, sLoc);
-		PropertyUtil.add(this.getProperties(), Predicates.IS_ENUM_TYPE, BaseSchemaObject.forScalar(Boolean.TRUE, SLOC));
+		PropertyUtil.add(this.getProperties(), Core.IS_ENUM_TYPE, BaseSchemaObject.forScalar(Boolean.TRUE, SLOC));
 	}
 	
 	public Set<SchemaObject> getValidValues() {

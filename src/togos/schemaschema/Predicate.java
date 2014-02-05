@@ -3,6 +3,7 @@ package togos.schemaschema;
 import java.util.Set;
 
 import togos.lang.SourceLocation;
+import togos.schemaschema.namespaces.Core;
 import togos.schemaschema.parser.ast.Word;
 
 public class Predicate extends BaseSchemaObject
@@ -21,11 +22,11 @@ public class Predicate extends BaseSchemaObject
 	}
 	
 	public void addObjectType(Type t) {
-		PropertyUtil.add(properties, Predicates.OBJECTS_ARE_MEMBERS_OF, t);
+		PropertyUtil.add(properties, Core.VALUE_TYPE, t);
 	}
 	
 	public Set<Type> getObjectTypes() {
-		return PropertyUtil.getAll(properties, Predicates.OBJECTS_ARE_MEMBERS_OF, Type.class);
+		return PropertyUtil.getAll(properties, Core.VALUE_TYPE, Type.class);
 	}
 	
 	@Override public String toString() {

@@ -1,6 +1,7 @@
 package togos.schemaschema;
 
 import togos.lang.BaseSourceLocation;
+import togos.schemaschema.namespaces.Types;
 import togos.schemaschema.parser.SchemaInterpreter;
 
 public class Values
