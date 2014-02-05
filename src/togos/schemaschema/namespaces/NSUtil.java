@@ -5,7 +5,6 @@ import togos.lang.BaseSourceLocation;
 import togos.schemaschema.BaseSchemaObject;
 import togos.schemaschema.Namespace;
 import togos.schemaschema.Predicate;
-import togos.schemaschema.PropertyUtil;
 import togos.schemaschema.SimpleType;
 import togos.schemaschema.Type;
 
@@ -13,15 +12,11 @@ public class NSUtil
 {
 	public static final String SCHEMA_PREFIX = "http://ns.nuke24.net/Schema/";
 	
-	public static Predicate definePredicate( Namespace ns, String name, Type objectType, String comment ) {
-		Predicate p = new Predicate( name, ns.prefix+WordUtil.toCamelCase(name), objectType, BaseSourceLocation.NONE );
+	public static Predicate definePredicate( Namespace ns, String name, Type valueType, String comment ) {
+		Predicate p = new Predicate( name, ns.prefix+WordUtil.toCamelCase(name), BaseSourceLocation.NONE );
 		ns.addPredicate(p);
-		if( comment != null ) {
-			// If comment itself is not defined and name = "comment", then 
-			// we're probably in the process of defining comment itself!
-			Predicate commentPredicate = (Core.COMMENT == null && "comment".equals(name)) ? p : Core.COMMENT; 
-			PropertyUtil.add(p.getProperties(), commentPredicate, BaseSchemaObject.forScalar(comment, BaseSourceLocation.NONE));
-		}
+		if( valueType != null ) p.setProperty(Core.VALUE_TYPE, valueType);
+		if( comment != null ) p.setProperty(Core.COMMENT, BaseSchemaObject.forScalar(comment, BaseSourceLocation.NONE));
 		return p;
 	}
 	

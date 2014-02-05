@@ -44,6 +44,12 @@ public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 		PropertyUtil.add( properties, Core.TYPE, type );
 	}
 	
+	public void setProperty( Predicate pred, SchemaObject value ) {
+		assert pred != null;
+		assert value != null;
+		PropertyUtil.add(properties, pred, value);
+	}
+	
 	@Override public SourceLocation getSourceLocation() { return sLoc; }
 	@Override public String getName() { return name; }
 	@Override public String getLongName() { return longName; }
