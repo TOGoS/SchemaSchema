@@ -7,6 +7,10 @@ public class CommandInterpreters
 {
 	private CommandInterpreters() { }
 	
+	public static void defineImportCommand( SchemaInterpreter sp ) {
+		sp.defineCommand("import", sp.new ImportCommandInterpreter());
+	}
+	
 	public static void defineTypeDefinitionCommands( SchemaInterpreter sp ) {
 		sp.defineCommand("class", sp.new ClassDefinitionCommandInterpreter());
 		sp.defineCommand("enum", sp.new EnumDefinitionCommandInterpreter());

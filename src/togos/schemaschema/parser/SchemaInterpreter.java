@@ -31,6 +31,7 @@ import togos.schemaschema.PropertyUtil;
 import togos.schemaschema.SchemaObject;
 import togos.schemaschema.Type;
 import togos.schemaschema.Types;
+import togos.schemaschema.parser.SchemaInterpreter.Modifier.ApplicationTarget;
 import togos.schemaschema.parser.ast.Block;
 import togos.schemaschema.parser.ast.Command;
 import togos.schemaschema.parser.ast.Parameterized;
@@ -71,6 +72,64 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 		 */
 		public boolean interpretCommand( Command cmd, int cmdPrefixLength ) throws CompileError;
 	}
+	
+	static final boolean isBareword( Word w, String text ) {
+		return w.quoting == Token.Type.BAREWORD && text.equals(w.text);
+	}
+
+	class ImportCommandInterpreter implements CommandInterpreter {
+		@Override public boolean interpretCommand( Command cmd, int cmdPrefixLength ) throws CompileError {
+			ensureNoParameters(cmd.subject, "symbol being defined");
+			if( cmd.modifiers.length > 0 || cmd.body.commands.length > 0 || cmd.subject.parameters.length > 0 ) {
+				throw new CompileError("Malformed import statement", cmd.sLoc );
+			}
+			Phrase p = cmd.subject.subject;
+			if( p.words.length == cmdPrefixLength + 1 ) {
+				// import 'something'
+				String origin = p.words[cmdPrefixLength].text;
+				Object thing = importables.get(origin);
+				if( thing == null ) {
+					throw new CompileError("Import failed; couldn't find '"+origin+"'", cmd.sLoc);
+				}
+				if( !(thing instanceof SchemaObject) ) {
+					throw new CompileError("Import failed; '"+origin+"' is not a SchemaObject, so its name can't be inferred", cmd.sLoc);
+				}
+				SchemaObject soThing = (SchemaObject)thing;
+				defineSomething(soThing.getName(), soThing, false, cmd.sLoc);
+			} else if( p.words.length == cmdPrefixLength + 3 && isBareword(p.words[cmdPrefixLength+1], "as") ) {
+				// import 'something' as 'something else'
+				String origin = p.words[cmdPrefixLength].text;
+				String alias = p.words[cmdPrefixLength+2].text;
+				Object thing = importables.get(origin);
+				if( thing == null ) {
+					throw new CompileError("Import failed; couldn't find '"+origin+"'", cmd.sLoc);
+				}
+				defineSomething(alias, thing, false, cmd.sLoc);
+			} else if( p.words.length == cmdPrefixLength + 3 &&
+				isBareword(p.words[cmdPrefixLength],"everything") &&
+				isBareword(p.words[cmdPrefixLength+1],"from")
+			) {
+				// import everything from 'somewhere'
+				String origin = p.words[cmdPrefixLength+2].text;
+				Object thing = importables.get(origin);
+				if( thing == null ) {
+					throw new CompileError("Import failed; couldn't find '"+origin+"'", cmd.sLoc);
+				}
+				if( !(thing instanceof Map) ) {
+					throw new CompileError("Import failed; '"+origin+"' is not a Map", cmd.sLoc);
+				}
+				for( Map.Entry<?,?> ent : ((Map<?,?>)thing).entrySet() ) {
+					String k = ent.getKey().toString();
+					Object v = ent.getValue();
+					defineSomething(k, v, false, cmd.sLoc);
+				}
+			} else {
+				throw new CompileError("Malformed import statement: "+cmd.toString(), cmd.sLoc );
+			}
+			return true;
+		}
+	}
+	
 	
 	abstract class DefinitionCommandInterpreter implements CommandInterpreter {
 		protected abstract void interpretDefinition( String name, Parameterized[] modifiers, Block body, boolean allowRedefinition, SourceLocation sLoc ) throws CompileError;
@@ -582,20 +641,30 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 	protected SymbolLookupContext<ModifierSpec> fieldModifiers = new SymbolLookupContext<ModifierSpec>(generalModifiers, "field modifier", ModifierSpec.class);
 	protected SymbolLookupContext<ModifierSpec> referenceModifiers = new SymbolLookupContext<ModifierSpec>(fieldModifiers, "reference modifier", ModifierSpec.class);
 	protected SymbolLookupContext<ModifierSpec> classModifiers = new SymbolLookupContext<ModifierSpec>(generalModifiers, "class modifier", ModifierSpec.class);
-	protected SymbolLookupContext<CommandInterpreter> commandInterpreters = new SymbolLookupContext<CommandInterpreter>(null, "command interpreter", CommandInterpreter.class); 
+	protected SymbolLookupContext<CommandInterpreter> commandInterpreters = new SymbolLookupContext<CommandInterpreter>(null, "command interpreter", CommandInterpreter.class);
+	protected Map<String, Object> importables = new HashMap<String, Object>();
 	
 	public SchemaInterpreter() { }
 	
-	public void defineThing( SchemaObject v, boolean allowRedefinition ) throws CompileError {
+	public void defineThing( String name, SchemaObject v, boolean allowRedefinition ) throws CompileError {
 		things.put(v.getName(), v, allowRedefinition, v.getSourceLocation());
+		_data( v );
+	}
+	
+	public void defineThing( SchemaObject v, boolean allowRedefinition ) throws CompileError {
+		defineThing(v.getName(), v, allowRedefinition);
+	}
+	
+	public void defineType( String name, Type t, boolean allowRedefinition ) throws CompileError {
+		types.put( name, t, allowRedefinition, t.getSourceLocation() );
+		HashMap<Predicate,Set<SchemaObject>> appliedProperties = new HashMap<Predicate,Set<SchemaObject>>();
+		PropertyUtil.add(appliedProperties, Predicates.OBJECTS_ARE_MEMBERS_OF, t);
+		fieldModifiers.put( name, new AliasModifier(Predicates.OBJECTS_ARE_MEMBERS_OF.getName(), appliedProperties), allowRedefinition, t.getSourceLocation() );
+		_data( t );
 	}
 	
 	public void defineType( Type t, boolean allowRedefinition ) throws CompileError {
-		types.put( t.getName(), t, allowRedefinition, t.getSourceLocation() );
-		HashMap<Predicate,Set<SchemaObject>> appliedProperties = new HashMap<Predicate,Set<SchemaObject>>();
-		PropertyUtil.add(appliedProperties, Predicates.OBJECTS_ARE_MEMBERS_OF, t);
-		fieldModifiers.put( t.getName(), new AliasModifier(Predicates.OBJECTS_ARE_MEMBERS_OF.getName(), appliedProperties), allowRedefinition, t.getSourceLocation() );
-		_data( t );
+		defineType(t.getName(), t, allowRedefinition);
 	}
 	
 	public void defineType( Type t ) throws CompileError {
@@ -625,12 +694,18 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 		defineModifier(classModifiers, name, spec, false, BaseSourceLocation.NONE );
 	}
 	
+	protected void definePredicate( String name, Predicate pred, SymbolLookupContext<ModifierSpec> modifierContext, Modifier.ApplicationTarget at, boolean allowRedefinition )
+		throws CompileError
+	{
+		predicates.put( name, pred, false, pred.getSourceLocation() );
+		defineModifier( modifierContext, name, new SimplePredicateModifierSpec(pred, at), false, pred.getSourceLocation() );
+		_data( pred );
+	}
+
 	protected void definePredicate( Predicate pred, SymbolLookupContext<ModifierSpec> modifierContext, Modifier.ApplicationTarget at, boolean allowRedefinition )
 		throws CompileError
 	{
-		predicates.put( pred.getName(), pred, false, pred.getSourceLocation() );
-		defineModifier( modifierContext, pred.getName(), new SimplePredicateModifierSpec(pred, at), false, pred.getSourceLocation() );
-		_data( pred );
+		definePredicate( pred.getName(), pred, modifierContext, at, allowRedefinition );
 	}
 	
 	public void defineReferencePredicate( Predicate pred ) throws CompileError {
@@ -661,6 +736,25 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 		} catch( CompileError e ) {
 			throw new RuntimeException(e);
 		}
+	}
+	
+	public void defineSomething( String name, Object v, boolean allowRedefinition, SourceLocation sLoc )
+		throws CompileError
+	{
+		// TODO: support modifiers
+		if( v instanceof Predicate ) {
+			definePredicate( name, (Predicate)v, generalModifiers, ApplicationTarget.WHATEVER, allowRedefinition );
+		} else if( v instanceof ComplexType ) {
+			defineType(name, (ComplexType)v, allowRedefinition);
+		} else if( v instanceof SchemaObject ) {
+			defineThing(name, (SchemaObject)v, allowRedefinition);
+		} else {
+			throw new CompileError("Don't know how to define a "+v.getClass(), sLoc);
+		}
+	}
+	
+	public void defineImportable( String name, Object v ) {
+		importables.put(name, v);
 	}
 	
 	protected SchemaObject evaluate( SchemaObject v, Parameterized[] parameters ) throws CompileError {
@@ -822,6 +916,18 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 	
 	@Override public void data(Command value) throws CompileError {
 		Phrase cmd = value.subject.subject;
+		for( int prefixLength = cmd.words.length; prefixLength >= 1; --prefixLength ) {
+			Phrase typeName = cmd.head(prefixLength);
+			if( typeName.words.length >= 2 && typeName.startsWithWord("redefine") ) {
+				typeName = typeName.tail(1);
+			}
+			CommandInterpreter ci = commandInterpreters.get(typeName.unquotedText(), CommandInterpreter.class, false, false, value.sLoc);
+			if( ci != null && ci.interpretCommand(value, prefixLength) ) {
+				return;
+			}
+		}
+		
+		/*
 		if( cmd.words.length >= 2 ) {
 			Phrase typeName = cmd.head(cmd.words.length-1);
 			if( cmd.words.length >= 3 && cmd.startsWithWord("redefine") ) {
@@ -832,6 +938,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 				return;
 			}
 		}
+		*/
 		
 		throw new CompileError("Unrecognised command: '"+cmd+"'", value.sLoc);
 	}
