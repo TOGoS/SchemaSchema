@@ -60,7 +60,7 @@ public class ComplexType extends BaseSchemaObject implements Type
 		Set<Type> parentTypes = getExtendedTypes();
 		if( parentTypes.size() > 0 ) {
 			for( Type t : parentTypes ) {
-				extendStr += extendStr.length() == 0 ? " : extends(" : ", ";
+				extendStr += extendStr.length() == 0 ? " : is subclass of(" : ", ";
 				extendStr += Phrase.quoteIfNecessary(t.getName());
 			}
 			extendStr += ")";

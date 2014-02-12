@@ -5,6 +5,8 @@ import static togos.schemaschema.PropertyUtil.isTrue;
 import java.util.Map;
 
 import junit.framework.TestCase;
+import togos.lang.BaseSourceLocation;
+import togos.lang.CompileError;
 import togos.lang.RuntimeError;
 import togos.lang.ScriptError;
 import togos.schemaschema.ComplexType;
@@ -12,11 +14,11 @@ import togos.schemaschema.EnumType;
 import togos.schemaschema.FieldSpec;
 import togos.schemaschema.IndexSpec;
 import togos.schemaschema.Predicate;
-import togos.schemaschema.Predicates;
 import togos.schemaschema.PropertyUtil;
 import togos.schemaschema.SchemaObject;
 import togos.schemaschema.Type;
-import togos.schemaschema.Types;
+import togos.schemaschema.namespaces.Core;
+import togos.schemaschema.namespaces.Types;
 
 public class SchemaParserTest extends TestCase
 {
@@ -27,9 +29,9 @@ public class SchemaParserTest extends TestCase
 		CommandInterpreters.defineTypeDefinitionCommands(sp);
 		sp.defineFieldModifier("key", SchemaInterpreter.FieldIndexModifierSpec.INSTANCE);
 		sp.defineFieldModifier("index", SchemaInterpreter.FieldIndexModifierSpec.INSTANCE);
-		sp.defineType(Types.INTEGER);
-		sp.defineType(Types.STRING);
-		sp.defineClassPredicate( Predicates.EXTENDS );
+		Types.NS.getClass();
+		sp.importEverythingFromNamespace( Core.NS, BaseSourceLocation.NONE );
+		sp.importEverythingFromNamespace( Core.RDFS_NS, BaseSourceLocation.NONE ); 
 	}
 	
 	protected void assertFieldsNamedProperly( Map<String,FieldSpec> fieldMap ) {
@@ -72,22 +74,22 @@ public class SchemaParserTest extends TestCase
 			FieldSpec intFieldSpec = ot.getField("int field");
 			assertNotNull( intFieldSpec );
 			assertEquals( "int field", intFieldSpec.getName() );
-			assertPropertyValue( null, intFieldSpec, Predicates.IS_NULLABLE );
-			assertPropertyValue( Types.INTEGER, intFieldSpec, Predicates.OBJECTS_ARE_MEMBERS_OF );
+			assertPropertyValue( null, intFieldSpec, Core.IS_NULLABLE );
+			assertPropertyValue( Types.INTEGER, intFieldSpec, Core.VALUE_TYPE );
 		}
 		
 		{
 			FieldSpec strFieldSpec = ot.getField("str field");
 			assertNotNull( strFieldSpec );
 			assertEquals( "str field", strFieldSpec.getName() );
-			assertFalse( isTrue(strFieldSpec, Predicates.IS_NULLABLE) );
-			assertPropertyValue( Types.STRING, strFieldSpec, Predicates.OBJECTS_ARE_MEMBERS_OF );
+			assertFalse( isTrue(strFieldSpec, Core.IS_NULLABLE) );
+			assertPropertyValue( Types.STRING, strFieldSpec, Core.VALUE_TYPE );
 		}
 	}
 	
 	public void testExtendedClass() throws ScriptError {
 		String source =
-			"class 'some object' : extends(integer) {\n" +
+			"class 'some object' : is subclass of(integer) {\n" +
 			"\tnumber of bits : integer\n" +
 			"}";
 			
@@ -144,7 +146,7 @@ public class SchemaParserTest extends TestCase
 		
 		EnumType enumX = (EnumType)sp.types.get("X");
 		assertNotNull(enumX);
-		Predicate predX = sp.predicates.get("X");
+		Predicate predX = sp.predicates.get("x");
 		assertNotNull(predX);
 		
 		ComplexType yClass = (ComplexType)sp.types.get("Y");
@@ -162,7 +164,7 @@ public class SchemaParserTest extends TestCase
 			"  bar\n" +
 			"}\n" +
 			"\n" +
-			"class property X : X\n";
+			"redefine class property X : X\n";
 		
 		sp.parse(source, "(test script)");
 		
@@ -174,7 +176,7 @@ public class SchemaParserTest extends TestCase
 		try {
 			sp.parse("class Y : X @ barrrr\n", "(more test script)");
 			fail("Inalid enum value should have thrown InterpretError");
-		} catch( RuntimeError e ) { }
+		} catch( CompileError e ) { }
 	}
 	
 	public void testFieldModifier() throws ScriptError {

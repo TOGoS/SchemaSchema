@@ -78,7 +78,16 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 	static final boolean isBareword( Word w, String text ) {
 		return w.quoting == Token.Type.BAREWORD && text.equals(w.text);
 	}
-
+	
+	protected void importEverythingFromNamespace( Namespace ns, SourceLocation sLoc ) throws CompileError {
+		for( Object obj : ns.items.values() ) {
+			if( obj instanceof SchemaObject ) {
+				SchemaObject so = (SchemaObject)obj;
+				defineSomething(so.getName(), so, false, sLoc);
+			}
+		}
+	}
+	
 	class ImportCommandInterpreter implements CommandInterpreter {
 		@Override public boolean interpretCommand( Command cmd, int cmdPrefixLength ) throws CompileError {
 			ensureNoParameters(cmd.subject, "symbol being defined");
@@ -120,12 +129,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 				if( !(thing instanceof Namespace) ) {
 					throw new CompileError("Import failed; '"+origin+"' is not a Namespace", cmd.sLoc);
 				}
-				for( Object obj : ((Namespace)thing).items.values() ) {
-					if( obj instanceof SchemaObject ) {
-						SchemaObject so = (SchemaObject)obj;
-						defineSomething(so.getName(), so, false, cmd.sLoc);
-					}
-				}
+				importEverythingFromNamespace( ((Namespace)thing), cmd.sLoc );
 			} else {
 				throw new CompileError("Malformed import statement: "+cmd.toString(), cmd.sLoc );
 			}
@@ -747,8 +751,8 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 		// TODO: support modifiers
 		if( v instanceof Predicate ) {
 			definePredicate( name, (Predicate)v, generalModifiers, ApplicationTarget.WHATEVER, allowRedefinition );
-		} else if( v instanceof ComplexType ) {
-			defineType(name, (ComplexType)v, allowRedefinition);
+		} else if( v instanceof Type ) {
+			defineType(name, (Type)v, allowRedefinition);
 		} else if( v instanceof SchemaObject ) {
 			defineThing(name, (SchemaObject)v, allowRedefinition);
 		} else {
