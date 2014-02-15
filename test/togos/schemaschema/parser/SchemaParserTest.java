@@ -7,7 +7,6 @@ import java.util.Map;
 import junit.framework.TestCase;
 import togos.lang.BaseSourceLocation;
 import togos.lang.CompileError;
-import togos.lang.RuntimeError;
 import togos.lang.ScriptError;
 import togos.schemaschema.ComplexType;
 import togos.schemaschema.EnumType;
