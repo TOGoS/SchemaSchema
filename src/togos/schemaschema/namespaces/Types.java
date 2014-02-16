@@ -6,11 +6,12 @@ import togos.schemaschema.Type;
 
 public class Types
 {
-	public static final Namespace NS = Namespace.getInstance(NSUtil.SCHEMA_PREFIX);
+	public static final Namespace NS = Namespace.getInstance(NSUtil.SCHEMA_PREFIX+"Types/");
 	
 	private Types() { }
 	
 	// TODO: All these things should themselves have type = class
+	// And maybe come from the RDF namespace
 	
 	public static final Type CLASS     = defineType(NS, "class");
 	
