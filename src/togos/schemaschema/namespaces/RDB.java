@@ -14,6 +14,7 @@ public class RDB
 	public static final Namespace NS = Namespace.getInstance(NSUtil.SCHEMA_PREFIX+"RDB/");
 	
 	public static final Type INDEX       = defineType(NS, "index");
+	public static final Type SEQUENCE    = defineType(NS, "sequence");
 	public static final Type FOREIGN_KEY = defineType(NS, "foreign key");
 	
 	// Table properties
@@ -21,6 +22,10 @@ public class RDB
 	public static final Predicate IS_SELF_KEYED = definePredicate(NS, "is self-keyed", Types.BOOLEAN, "indicates the subject is a class that uses all of its fields as a primary key");
 	public static final Predicate HAS_INDEX = definePredicate(NS, "has index", INDEX, null);
 	
+	// Sequence properties
+	public static final Predicate INITIAL_VALUE = definePredicate(NS, "initial value", Types.INTEGER, "initial value for sequences");
+	
 	// Column properties
 	public static final Predicate IS_AUTO_INCREMENTED = definePredicate(NS, "is auto-incremented", Types.BOOLEAN, null);
+	public static final Predicate DEFAULT_VALUE_SEQUENCE = definePredicate(NS, "default value sequence", SEQUENCE, null);
 }
