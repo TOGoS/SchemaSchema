@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.Set;
 
 import togos.asyncstream.BaseStreamSource;
@@ -771,6 +773,8 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 		return v;
 	}
 	
+	protected static final Pattern INTEGER_REGEX = Pattern.compile("\\d+");
+	
 	/**
 	 * @param context predicate whose object we are evaluating; may be null
 	 * @param p Parameterized representation of the value
@@ -781,9 +785,14 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 		if( p.subject.words.length == 1 && p.subject.words[0].quoting == Token.Type.DOUBLE_QUOTED_STRING ) {
 			return BaseSchemaObject.forScalar(p.subject.unquotedText(), p.subject.sLoc);
 		}
-		// TODO: Parse number literals
 		
 		String name = p.subject.unquotedText();
+
+		Matcher m;
+		if( (m = INTEGER_REGEX.matcher(name)).matches() ) {
+			return BaseSchemaObject.forScalar(Long.parseLong(name), p.subject.sLoc);
+		}
+		
 		Set<SchemaObject> possibleValues = new LinkedHashSet<SchemaObject>();
 		if( context != null ) {
 			for( Type t : context.getObjectTypes() ) {
