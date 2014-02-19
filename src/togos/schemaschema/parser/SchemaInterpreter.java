@@ -361,16 +361,25 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 		}
 	}
 	
-	class ObjectCommandInterpreter extends DefinitionCommandInterpreter {
-		public ObjectCommandInterpreter() { }
+	public class ObjectCommandInterpreter extends DefinitionCommandInterpreter {
+		protected final Type impliedClass;
 		
+		public ObjectCommandInterpreter( Type impliedClass ) {
+			this.impliedClass = impliedClass;
+		}
+		public ObjectCommandInterpreter() { this(null); }
+				
 		protected void defineObject( SchemaObject obj, boolean allowRedefinition ) throws CompileError {
 			things.put( obj.getName(), obj, allowRedefinition, obj.getSourceLocation() );
 			_data( obj );
 		}
 		
 		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body, boolean allowRedefinition, SourceLocation sLoc ) throws CompileError {
-			defineObject( parseObject( name, modifiers, body, sLoc ), allowRedefinition );
+			SchemaObject obj = parseObject( name, modifiers, body, sLoc );
+			if( impliedClass != null ) {
+				PropertyUtil.add( obj.getProperties(), Core.TYPE, impliedClass );
+			}
+			defineObject( obj, allowRedefinition );
 		}
 	}
 	
