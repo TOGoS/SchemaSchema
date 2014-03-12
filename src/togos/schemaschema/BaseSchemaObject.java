@@ -21,6 +21,9 @@ public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 	public static BaseSchemaObject forScalar( Object scalarValue, String name, Type memberOf, SourceLocation sLoc ) {
 		// Do we ALWAYS want to re-use the existing object?
 		// Since name, memberof, sLoc may be different, this could be really confusing, so probably not.
+		// Doing this now as short-term fix so that things like 'nullable' predicate,
+		// when used multiple times, don't cause 'multiple values for predicate' errors.
+		// That case might be better served by having a static final TRUE value somewhere.
 		synchronized( scalarSchemaObjects ) {
 			BaseSchemaObject obj = scalarSchemaObjects.get(scalarValue);
 			if( obj == null ) {
