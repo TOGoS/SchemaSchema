@@ -3,6 +3,7 @@ package togos.schemaschema;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.WeakHashMap;
 
 import togos.lang.SourceLocation;
 import togos.schemaschema.namespaces.Core;
@@ -15,11 +16,21 @@ public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 	public Object scalarValue;
 	public final Map<Predicate,Set<SchemaObject>> properties = new LinkedHashMap<Predicate,Set<SchemaObject>>();
 	
+	public static final WeakHashMap<Object,BaseSchemaObject> scalarSchemaObjects = new WeakHashMap<Object,BaseSchemaObject>();
+	
 	public static BaseSchemaObject forScalar( Object scalarValue, String name, Type memberOf, SourceLocation sLoc ) {
-		BaseSchemaObject obj = new BaseSchemaObject(name, sLoc);
-		obj.scalarValue = scalarValue;
-		if( memberOf != null ) PropertyUtil.add(obj.getProperties(), Core.TYPE, memberOf);
-		return obj;
+		// Do we ALWAYS want to re-use the existing object?
+		// Since name, memberof, sLoc may be different, this could be really confusing, so probably not.
+		synchronized( scalarSchemaObjects ) {
+			BaseSchemaObject obj = scalarSchemaObjects.get(scalarValue);
+			if( obj == null ) {
+				obj = new BaseSchemaObject(name, sLoc);
+				obj.scalarValue = scalarValue;
+				if( memberOf != null ) PropertyUtil.add(obj.getProperties(), Core.TYPE, memberOf);
+				scalarSchemaObjects.put( scalarValue, obj );
+			}
+			return obj;
+		}
 	}
 	
 	public static BaseSchemaObject forScalar( Object scalarValue, SourceLocation sLoc ) {
