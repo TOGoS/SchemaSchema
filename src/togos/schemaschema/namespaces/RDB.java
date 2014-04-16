@@ -21,7 +21,7 @@ public class RDB
 	// Table properties
 	public static final Predicate NAME_IN_DB = definePredicate(NS, "name in database", Types.STRING,
 		"name of the database object that the subject corresponds to; useful when different than what would be inferred based on the subject's canonical name");
-	public static final Predicate IN_NAMESPACE = definePredicate(NS, "is contained in namespace", Types.OBJECT,
+	public static final Predicate IN_NAMESPACE = definePredicate(NS, "is in namespace", Types.OBJECT,
 		"namespace (probably a 'schema' object) within which this object is defined");
 	public static final Predicate HAS_FOREIGN_KEY = definePredicate(NS, "has foreign key", FOREIGN_KEY, null);
 	public static final Predicate IS_SELF_KEYED = definePredicate(NS, "is self-keyed", Types.BOOLEAN, "indicates the subject is a class that uses all of its fields as a primary key");
