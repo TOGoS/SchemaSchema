@@ -950,6 +950,12 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 			if( ci != null && ci.interpretCommand(value, prefixLength) ) {
 				return;
 			}
+			// Otherwise, if there's a type with that name,
+			// we're defining an object of that type
+			Type type = types.get(typeName.unquotedText(), Type.class, false, false, value.sLoc);
+			if( type != null && new ObjectCommandInterpreter( type ).interpretCommand(value, prefixLength) ) {
+				return;
+			}
 		}
 		
 		/*
