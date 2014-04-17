@@ -10,9 +10,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.Set;
 
 import togos.asyncstream.BaseStreamSource;
 import togos.asyncstream.StreamDestination;
@@ -368,18 +368,19 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 			this.impliedClass = impliedClass;
 		}
 		public ObjectCommandInterpreter() { this(null); }
-				
-		protected void defineObject( SchemaObject obj, boolean allowRedefinition ) throws CompileError {
-			things.put( obj.getName(), obj, allowRedefinition, obj.getSourceLocation() );
+		
+		protected void defineObject( String name, SchemaObject obj, boolean allowRedefinition ) throws CompileError {
+			things.put( name, obj, allowRedefinition, obj.getSourceLocation() );
 			_data( obj );
 		}
 		
 		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body, boolean allowRedefinition, SourceLocation sLoc ) throws CompileError {
+			System.err.println("Interpret object '"+name+"'");
 			SchemaObject obj = parseObject( name, modifiers, body, sLoc );
 			if( impliedClass != null ) {
 				PropertyUtil.add( obj.getProperties(), Core.TYPE, impliedClass );
 			}
-			defineObject( obj, allowRedefinition );
+			defineObject( name, obj, allowRedefinition );
 		}
 	}
 	
@@ -869,13 +870,23 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 	}
 	
 	protected SchemaObject parseObject( String name, Parameterized[] modifiers, Block body, SourceLocation sLoc ) throws CompileError {
-		BaseSchemaObject obj = new BaseSchemaObject( name, sLoc );
+		// Allow a single scalar value
+		boolean valueSpecified = false;
+		SchemaObject obj = null;
+		for( Command c : body.commands ) {
+			Parameterized[] v = c.getSubjectAndModifiers();
+			if( valueSpecified || v.length != 1 ) {
+				throw new CompileError("Object literal blocks may only contain a single literal scalar value", c.sLoc );
+			}
+			valueSpecified = true;
+			obj = evaluate(null, v[0]);
+		}
+		if( !valueSpecified ) {
+			obj = new BaseSchemaObject( name, sLoc );
+		}
 		for( Parameterized p : modifiers ) {
 			ModifierSpec ms = generalModifiers.get(p.subject);
 			ms.bind(this, p.parameters, p.sLoc).apply(obj);
-		}
-		for( Command c : body.commands ) {
-			throw new CompileError("Object literals cannot have a block", c.sLoc );
 		}
 		return obj;
 	}
