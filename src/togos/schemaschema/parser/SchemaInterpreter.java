@@ -375,7 +375,6 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 		}
 		
 		@Override public void interpretDefinition( String name, Parameterized[] modifiers, Block body, boolean allowRedefinition, SourceLocation sLoc ) throws CompileError {
-			System.err.println("Interpret object '"+name+"'");
 			SchemaObject obj = parseObject( name, modifiers, body, sLoc );
 			if( impliedClass != null ) {
 				PropertyUtil.add( obj.getProperties(), Core.TYPE, impliedClass );
