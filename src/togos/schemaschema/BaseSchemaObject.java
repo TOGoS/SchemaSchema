@@ -47,6 +47,14 @@ public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 		// TODO: name and long name should show up in properties,
 		// but that has some circular dependencies when defining
 		// those predicates themselves.
+		/*
+		if( Core.NAME != null ) {
+			PropertyUtil.add( properties, Core.NAME, forScalar(name, sLoc) );
+		}
+		if( Core.LONGNAME != null ) {
+			PropertyUtil.add( properties, Core.LONGNAME, forScalar(longName, sLoc) );
+		}
+		*/
 	}
 		
 	public BaseSchemaObject( String name, SourceLocation sLoc ) {
@@ -55,18 +63,28 @@ public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 	
 	public BaseSchemaObject( String name, Type type, SourceLocation sLoc ) {
 		this( name, sLoc );
-		PropertyUtil.add( properties, Core.TYPE, type );
+		setProperty( Core.TYPE, type );
 	}
 	
 	public void setProperty( Predicate pred, SchemaObject value ) {
 		assert pred != null;
 		assert value != null;
 		PropertyUtil.add(properties, pred, value);
+		if( pred == Core.NAME && value.getScalarValue() instanceof String ) {
+			this.name = (String)value.getScalarValue();
+		}
+		if( pred == Core.LONGNAME && value.getScalarValue() instanceof String ) {
+			this.longName = (String)value.getScalarValue();
+		}
 	}
 	
 	@Override public SourceLocation getSourceLocation() { return sLoc; }
-	@Override public String getName() { return name; }
-	@Override public String getLongName() { return longName; }
+	@Override public String getName() {
+		return PropertyUtil.getFirstInheritedScalar(this, Core.NAME, String.class, name);
+	}
+	@Override public String getLongName() {
+		return PropertyUtil.getFirstInheritedScalar(this, Core.LONGNAME, String.class, longName);
+	}
 	@Override public Map<Predicate, Set<SchemaObject>> getProperties() { return properties; }
 	
 	/**
