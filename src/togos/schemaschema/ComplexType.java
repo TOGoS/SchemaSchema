@@ -6,6 +6,7 @@ import java.util.Set;
 import togos.lang.SourceLocation;
 import togos.schemaschema.namespaces.Core;
 import togos.schemaschema.namespaces.RDB;
+import togos.schemaschema.namespaces.Types;
 import togos.schemaschema.parser.ast.Phrase;
 import togos.schemaschema.parser.ast.Word;
 
@@ -18,6 +19,7 @@ public class ComplexType extends BaseSchemaObject implements Type
 {
 	public ComplexType( String name, SourceLocation sLoc ) {
 		super(name, sLoc);
+		setProperty(Core.TYPE, Types.CLASS);
 	}
 	
 	public Collection<FieldSpec> getFields() {

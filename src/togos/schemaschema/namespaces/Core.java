@@ -8,6 +8,7 @@ import togos.lang.BaseSourceLocation;
 import togos.schemaschema.BaseSchemaObject;
 import togos.schemaschema.Namespace;
 import togos.schemaschema.Predicate;
+import togos.schemaschema.SimpleType;
 import togos.schemaschema.Type;
 
 public class Core
@@ -16,6 +17,7 @@ public class Core
 	public static final Namespace RDFS_NS = Namespace.getInstance("http://www.w3.org/2000/01/rdf-schema#");
 	
 	public static final Namespace NS = Namespace.getInstance(NSUtil.SCHEMA_PREFIX);
+	public static final Namespace TYPES_NS = Namespace.getInstance(NSUtil.SCHEMA_PREFIX+"Types/");
 	
 	private Core() { }
 	
@@ -49,6 +51,7 @@ public class Core
 		for( PredicatePredefinition ppd : predefs ) {
 			String cName = WordUtil.toCamelCase(ppd.name);
 			String longName = NS.prefix+cName;
+			ppd.pred.setProperty(TYPE, PREDICATE);
 			ppd.pred.setProperty(NAME, BaseSchemaObject.forScalar(ppd.name));
 			ppd.pred.setProperty(LONGNAME, BaseSchemaObject.forScalar(longName));
 			if( ppd.valueType != null ) ppd.pred.addObjectType(ppd.valueType);
@@ -57,6 +60,10 @@ public class Core
 		}
 		fixedUp = true;
 	}
+	
+	// This needs to be defined right away
+	public static final SimpleType CLASS     = new SimpleType("class", TYPES_NS.prefix+"Class", BaseSourceLocation.NONE);
+	public static final SimpleType PREDICATE = new SimpleType("predicate", TYPES_NS.prefix+"Predicate", BaseSourceLocation.NONE);
 	
 	public static final Predicate COMMENT  = predefinePredicate(NS, "comment", Types.STRING, "a note about the subject");
 	
@@ -76,5 +83,9 @@ public class Core
 	
 	static {
 		fixUpPredefinitions();
+		CLASS.fixCoreProperties(true);
+		CLASS.setProperty(TYPE, CLASS);
+		PREDICATE.fixCoreProperties(true);
+		PREDICATE.setProperty(TYPE, CLASS);
 	}
 }

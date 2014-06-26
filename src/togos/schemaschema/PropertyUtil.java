@@ -106,7 +106,7 @@ public class PropertyUtil
 		if( v == Boolean.TRUE ) {
 			return key.getName();
 		} else {
-			return key + " @ " + objectToString(v);
+			return key.getName() + " @ " + objectToString(v);
 		}
 	}
 	

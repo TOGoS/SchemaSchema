@@ -12,6 +12,8 @@ import togos.schemaschema.namespaces.Core;
 public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 {
 	protected final SourceLocation sLoc;
+	// TODO: Remove name, longName, since they're redundant
+	// And don't try to set them in the constructor.
 	protected String name;
 	protected String longName;
 	public Object scalarValue;
@@ -49,19 +51,9 @@ public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 		this.name = name;
 		this.longName = longName;
 		this.sLoc = sLoc;
-		// TODO: name and long name should show up in properties,
-		// but that has some circular dependencies when defining
-		// those predicates themselves.
-		/*
-		if( Core.NAME != null ) {
-			PropertyUtil.add( properties, Core.NAME, forScalar(name, sLoc) );
-		}
-		if( Core.LONGNAME != null ) {
-			PropertyUtil.add( properties, Core.LONGNAME, forScalar(longName, sLoc) );
-		}
-		*/
+		fixCoreProperties(false);
 	}
-		
+	
 	public BaseSchemaObject( String name, SourceLocation sLoc ) {
 		this( name, (String)null, sLoc );
 	}
@@ -72,8 +64,8 @@ public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 	}
 	
 	public void setProperty( Predicate pred, SchemaObject value ) {
-		assert pred != null;
-		assert value != null;
+		if( pred == null ) throw new RuntimeException("Attempting to set property with null predicate.");
+		if( value == null ) throw new RuntimeException("Attempting to set property with null value.");
 		PropertyUtil.add(properties, pred, value);
 		if( pred == Core.NAME && value.getScalarValue() instanceof String ) {
 			this.name = (String)value.getScalarValue();
@@ -110,5 +102,24 @@ public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 	
 	@Override public boolean hasScalarValue() {
 		return scalarValue != null;
+	}
+	
+	//
+	
+	public void fixCoreProperties( boolean throwIfUnfixable ) {
+		if( name != null ) {
+			if( Core.NAME != null ) {
+				PropertyUtil.add( properties, Core.NAME, forScalar(name, sLoc) );
+			} else if( throwIfUnfixable ) {
+				throw new RuntimeException("Can't fix 'name' because the NAME predicate is still undefined.");
+			}
+		}
+		if( longName != null ) {
+			if( Core.LONGNAME != null ) {
+				PropertyUtil.add( properties, Core.LONGNAME, forScalar(longName, sLoc) );
+			} else if( throwIfUnfixable ) {
+				throw new RuntimeException("Can't fix 'long name' because the LONGNAME predicate is still undefined.");
+			}
+		}
 	}
 }
