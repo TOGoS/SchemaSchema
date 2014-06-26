@@ -30,7 +30,8 @@ public class SchemaParserTest extends TestCase
 		sp.defineFieldModifier("index", SchemaInterpreter.FieldIndexModifierSpec.INSTANCE);
 		Types.NS.getClass();
 		sp.importEverythingFromNamespace( Core.NS, BaseSourceLocation.NONE );
-		sp.importEverythingFromNamespace( Core.RDFS_NS, BaseSourceLocation.NONE ); 
+		sp.importEverythingFromNamespace( Core.RDFS_NS, BaseSourceLocation.NONE );
+		sp.importEverythingFromNamespace( Types.NS, BaseSourceLocation.NONE );
 	}
 	
 	protected void assertFieldsNamedProperly( Map<String,FieldSpec> fieldMap ) {
