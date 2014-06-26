@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 
+import togos.lang.BaseSourceLocation;
 import togos.lang.SourceLocation;
 import togos.schemaschema.namespaces.Core;
 
@@ -37,7 +38,11 @@ public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 	}
 	
 	public static BaseSchemaObject forScalar( Object scalarValue, SourceLocation sLoc ) {
-		return forScalar( scalarValue, scalarValue == null ? "null" : scalarValue.toString(), null, sLoc );
+		return forScalar( scalarValue, scalarValue == null ? "null" : null, null, sLoc );
+	}
+	
+	public static BaseSchemaObject forScalar( Object scalarValue ) {
+		return forScalar( scalarValue, BaseSourceLocation.NONE );
 	}
 	
 	public BaseSchemaObject( String name, String longName, SourceLocation sLoc ) {

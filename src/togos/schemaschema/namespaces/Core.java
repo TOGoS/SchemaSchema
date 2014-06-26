@@ -3,6 +3,7 @@ package togos.schemaschema.namespaces;
 import java.util.ArrayList;
 import java.util.List;
 
+import togos.codeemitter.WordUtil;
 import togos.lang.BaseSourceLocation;
 import togos.schemaschema.BaseSchemaObject;
 import togos.schemaschema.Namespace;
@@ -22,11 +23,15 @@ public class Core
 	// when using certain predicates as part of their own definitions.
 	
 	private static class PredicatePredefinition {
+		public final Namespace ns;
+		public final String name;
 		public final Predicate pred;
 		public final Type valueType;
 		public final String comment;
-		public PredicatePredefinition( Predicate p, Type valueType, String comment ) {
+		public PredicatePredefinition( Predicate p, Namespace ns, String name, Type valueType, String comment ) {
 			this.pred = p;
+			this.ns = ns;
+			this.name = name;
 			this.valueType = valueType;
 			this.comment = comment;
 		}
@@ -35,16 +40,20 @@ public class Core
 	private static boolean fixedUp = false;
 	private static Predicate predefinePredicate(Namespace ns, String name, Type valueType, String comment) {
 		assert !fixedUp;
-		Predicate pred = new Predicate(name, BaseSourceLocation.NONE);
-		predefs.add(new PredicatePredefinition(pred, valueType, comment));
-		ns.addPredicate(pred);
+		Predicate pred = Predicate.getWithoutInitializing(ns, name);
+		predefs.add(new PredicatePredefinition(pred, ns, name, valueType, comment));
 		return pred;
 	}
 	private static void fixUpPredefinitions() {
 		assert !fixedUp;
 		for( PredicatePredefinition ppd : predefs ) {
+			String cName = WordUtil.toCamelCase(ppd.name);
+			String longName = NS.prefix+cName;
+			ppd.pred.setProperty(NAME, BaseSchemaObject.forScalar(ppd.name));
+			ppd.pred.setProperty(LONGNAME, BaseSchemaObject.forScalar(longName));
 			if( ppd.valueType != null ) ppd.pred.addObjectType(ppd.valueType);
 			if( ppd.comment != null ) ppd.pred.setProperty(COMMENT, BaseSchemaObject.forScalar(ppd.comment, BaseSourceLocation.NONE));
+			ppd.ns.addItem(cName, ppd.pred);
 		}
 		fixedUp = true;
 	}

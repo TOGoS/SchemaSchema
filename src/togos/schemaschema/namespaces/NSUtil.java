@@ -21,8 +21,11 @@ public class NSUtil
 	}
 	
 	public static Type defineType( Namespace ns, String name ) {
+		String cName = WordUtil.toPascalCase(name);
+		String longName = ns.prefix + cName;
 		SimpleType t = new SimpleType(name, BaseSourceLocation.NONE);
-		ns.addType(t);
+		t.setProperty(Core.LONGNAME, BaseSchemaObject.forScalar(longName));
+		ns.addItem(cName, t);
 		return t;
 	}
 }

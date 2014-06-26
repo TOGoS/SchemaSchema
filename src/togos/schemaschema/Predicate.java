@@ -1,13 +1,34 @@
 package togos.schemaschema;
 
+import java.util.HashMap;
 import java.util.Set;
 
+import togos.codeemitter.WordUtil;
+import togos.lang.BaseSourceLocation;
 import togos.lang.SourceLocation;
 import togos.schemaschema.namespaces.Core;
 import togos.schemaschema.parser.ast.Word;
 
 public class Predicate extends BaseSchemaObject
 {
+	protected static HashMap<String,Predicate> byLongName = new HashMap<String,Predicate>(); 
+	
+	public static synchronized Predicate getWithoutInitializing(Namespace ns, String name) {
+		String longName = ns.prefix + WordUtil.toCamelCase(name);
+		Predicate p = byLongName.get(longName);
+		if( p == null ) {
+			p = new Predicate(BaseSourceLocation.NONE);
+			//p.name = name;
+			//p.longName = longName;
+			byLongName.put(longName, p);
+		}
+		return p;
+	}
+	
+	public Predicate(SourceLocation sLoc) {
+		super(null, sLoc);
+	}
+	
 	public Predicate(String name, SourceLocation sLoc) {
 		super(name, sLoc);
 	}

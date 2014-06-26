@@ -35,7 +35,7 @@ public class Namespace
 		containedNamespaces.put(n, ns);
 	}
 	
-	protected synchronized void addItem( String urlName, Object v ) {
+	public synchronized void addItem( String urlName, Object v ) {
 		items.put( urlName, v );
 	}
 	
