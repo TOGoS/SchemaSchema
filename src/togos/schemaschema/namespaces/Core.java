@@ -10,11 +10,13 @@ import togos.schemaschema.Namespace;
 import togos.schemaschema.Predicate;
 import togos.schemaschema.SimpleType;
 import togos.schemaschema.Type;
+import togos.schemaschema.Values;
 
 public class Core
 {
 	public static final Namespace RDF_NS = Namespace.getInstance("http://www.w3.org/1999/02/22-rdf-syntax-ns#");
 	public static final Namespace RDFS_NS = Namespace.getInstance("http://www.w3.org/2000/01/rdf-schema#");
+	public static final Namespace SCHEMA_NS = Namespace.getInstance("http://schema.org/");
 	
 	public static final Namespace NS = Namespace.getInstance(NSUtil.SCHEMA_PREFIX);
 	public static final Namespace TYPES_NS = Namespace.getInstance(NSUtil.SCHEMA_PREFIX+"Types/");
@@ -82,10 +84,15 @@ public class Core
 	public static final Predicate HAS_FIELD    = predefinePredicate(NS, "has field", Types.FIELD, null);
 	
 	static {
+		// Fix stuff up!
 		fixUpPredefinitions();
 		CLASS.fixCoreProperties(true);
 		CLASS.setProperty(TYPE, CLASS);
 		PREDICATE.fixCoreProperties(true);
 		PREDICATE.setProperty(TYPE, CLASS);
+		
+		// Define some singleton values
+		SCHEMA_NS.addItem("True", Values.TRUE);
+		SCHEMA_NS.addItem("False", Values.FALSE);
 	}
 }
