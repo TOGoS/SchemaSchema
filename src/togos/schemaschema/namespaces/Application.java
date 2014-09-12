@@ -27,7 +27,7 @@ public class Application
 		"indicates that instances of this class are not secret and "+
 		"may be visible to the general public");
 	public static final Predicate MEMBER_SET_IS_PUBLIC = definePredicate(
-		NS, "members are public"  , Types.BOOLEAN,
+		NS, "members set is public"  , Types.BOOLEAN,
 		"indicates that the set of instances of this class is not secret and "+
 		"may be visible to the general public");
 	public static final Predicate MEMBERS_ARE_MUTABLE = definePredicate(
