@@ -199,7 +199,7 @@ public class PropertyUtil
 	}
 	
 	public static boolean getFirstInheritedBoolean( SchemaObject obj, Predicate pred, boolean defaultValue ) {
-		return getFirstInheritedScalar(obj, pred, Boolean.class, Boolean.FALSE ).booleanValue();
+		return getFirstInheritedScalar(obj, pred, Boolean.class, Boolean.valueOf(defaultValue) ).booleanValue();
 	}
 	
 	public static SchemaObject getType( SchemaObject obj ) {
