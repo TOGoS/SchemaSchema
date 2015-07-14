@@ -182,6 +182,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 				
 				String foreignTypeName = null;
 				Block referenceBody = null;
+				SourceLocation referenceClassSymbolSloc = null;
 				ArrayList<Modifier> _fieldModifiers = new ArrayList<Modifier>();
 				
 				boolean isReferenceField = false;
@@ -195,6 +196,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 								mod.parameters.length+" parameters", mod.sLoc
 							);
 						}
+						referenceClassSymbolSloc = mod.parameters[0].sLoc;
 						foreignTypeName = singleString( mod.parameters[0] ,"foreign type name" );
 						if( fieldCommand.body == null ) {
 							throw new CompileError(
@@ -225,7 +227,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 					String fieldName = fieldCommand.subject.subject.unquotedText();
 					
 					assert foreignTypeName != null;
-					ComplexType foreignType = foreignTypeName.equals(name) ? t : (ComplexType)types.get(foreignTypeName);
+					ComplexType foreignType = foreignTypeName.equals(name) ? t : (ComplexType)types.get(foreignTypeName, referenceClassSymbolSloc);
 					
 					ArrayList<ForeignKeySpec.Component> fkComponents = new ArrayList<ForeignKeySpec.Component>();
 					for( Command fkCommand : referenceBody.commands ) {
@@ -633,11 +635,15 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 		}
 		
 		public T get(Phrase p) throws CompileError {
-			return get(p.unquotedText(), valueClass, true, true, p.sLoc); 
+			return get(p.unquotedText(), valueClass, true, true, p.sLoc);
+		}
+		
+		public T get(String name, SourceLocation sLoc) throws CompileError {
+			return get(name, valueClass, true, true, sLoc);
 		}
 		
 		public T get(String name) throws CompileError {
-			return get(name, valueClass, true, true, BaseSourceLocation.NONE); 
+			return get(name, BaseSourceLocation.NONE);
 		}
 		
 		public void put(String name, T value, boolean allowRedefinition, SourceLocation sLoc) throws RedefinitionError {
