@@ -122,6 +122,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 				isBareword(p.words[cmdPrefixLength],"everything") &&
 				isBareword(p.words[cmdPrefixLength+1],"from")
 			) {
+				System.err.println("Warning: import everything considered harmful ("+BaseSourceLocation.toString(p.sLoc)+")");
 				// import everything from 'somewhere'
 				String origin = p.words[cmdPrefixLength+2].text;
 				Object thing = importables.get(origin);
