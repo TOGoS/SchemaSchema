@@ -804,8 +804,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 		
 		String name = p.subject.unquotedText();
 
-		Matcher m;
-		if( (m = INTEGER_REGEX.matcher(name)).matches() ) {
+		if( INTEGER_REGEX.matcher(name).matches() ) {
 			return BaseSchemaObject.forScalar(Long.parseLong(name), p.subject.sLoc);
 		}
 		
