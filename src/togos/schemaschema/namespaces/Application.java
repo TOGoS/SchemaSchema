@@ -19,7 +19,7 @@ public class Application
 	
 	public static final Type STORAGE_SYSTEM   = defineType(NS, "storage system");
 	public static final Predicate USES_STORAGE_SYSTEM = definePredicate(
-		NS, "storage system", STORAGE_SYSTEM,
+		NS, "uses storage system", STORAGE_SYSTEM,
 		"storage system that can be used to store and fetch members of this type");
 	
 	public static final Predicate HAS_DB_TABLE     = definePredicate(
