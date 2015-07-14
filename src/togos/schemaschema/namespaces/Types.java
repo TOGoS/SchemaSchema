@@ -29,4 +29,5 @@ public class Types
 	public static final Type REFERENCE = defineType(NS, "reference");
 	public static final Type OBJECT    = defineType(NS, "object");
 	public static final Type FIELD     = defineType(NS, "field");
+	public static final Type UNIT      = defineType(NS, "unit");
 }

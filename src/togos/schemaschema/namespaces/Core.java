@@ -79,6 +79,7 @@ public class Core
 	
 	// Field/predicate properties
 	public static final Predicate VALUE_TYPE   = predefinePredicate(NS, "value type", Types.CLASS, "indicates that the subject is a field or predicate whose objects must be of the specified class");
+	public static final Predicate UNIT_VALUE   = predefinePredicate(NS, "unit value", Types.UNIT, "for numeric fields, indicates what '1' means");
 	public static final Predicate IS_NULLABLE  = predefinePredicate(NS, "is nullable", Types.BOOLEAN, "indicates that the subject is a field for which null is a valid value");
 	public static final Predicate DEFAULT_VALUE= predefinePredicate(NS, "default value", null, "default value of field");
 	public static final Predicate HAS_FIELD    = predefinePredicate(NS, "has field", Types.FIELD, null);
