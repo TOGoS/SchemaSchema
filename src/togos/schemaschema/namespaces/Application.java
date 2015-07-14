@@ -1,8 +1,10 @@
 package togos.schemaschema.namespaces;
 
 import static togos.schemaschema.namespaces.NSUtil.definePredicate;
+import static togos.schemaschema.namespaces.NSUtil.defineType;
 import togos.schemaschema.Namespace;
 import togos.schemaschema.Predicate;
+import togos.schemaschema.Type;
 
 /**
  * Predicates that define how a class should be used within a program
@@ -14,6 +16,11 @@ public class Application
 	private Application() { }
 	
 	//// Class predicates
+	
+	public static final Type STORAGE_SYSTEM   = defineType(NS, "storage system");
+	public static final Predicate USES_STORAGE_SYSTEM = definePredicate(
+		NS, "storage system", STORAGE_SYSTEM,
+		"storage system that can be used to store and fetch members of this type");
 	
 	public static final Predicate HAS_DB_TABLE     = definePredicate(
 		NS, "has a database table", Types.BOOLEAN,
