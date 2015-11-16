@@ -11,7 +11,6 @@ import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import togos.asyncstream.BaseStreamSource;
@@ -140,6 +139,32 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 		}
 	}
 	
+	/**
+	 * Allows you to add additional information to already-defined objects.
+	 * e.g.
+	 * 
+	 *   extend 'string' : C type @ "char *"
+	 */
+	class ExtensionCommandInterpreter implements CommandInterpreter {
+		@Override
+		public boolean interpretCommand(Command cmd, int cmdPrefixLength) throws CompileError {
+			String thingName = cmd.subject.subject.tail(cmdPrefixLength).unquotedText();
+			Object thing = things.get(thingName);
+			if( thing == null ) {
+				throw new CompileError("Cannot extend '"+thingName+"' because it is not already defined", cmd.sLoc);
+			}
+			if( !(thing instanceof SchemaObject) ) {
+				throw new CompileError("Cannot extend '"+thingName+"' because it is not a SchemaObject, but a "+thing.getClass().getName(), cmd.sLoc);
+			}
+			if( cmd.body.commands.length > 0 ) {
+				throw new CompileError("'extend' does not take a body", cmd.sLoc);
+			}
+			for( Parameterized mod : cmd.modifiers ) {
+				classModifiers.get(mod.subject).bind(SchemaInterpreter.this, mod.parameters, mod.sLoc).apply((SchemaObject)thing);
+			}
+			return true;
+		}
+	}
 	
 	abstract class DefinitionCommandInterpreter implements CommandInterpreter {
 		protected abstract void interpretDefinition( String name, Parameterized[] modifiers, Block body, boolean allowRedefinition, SourceLocation sLoc ) throws CompileError;

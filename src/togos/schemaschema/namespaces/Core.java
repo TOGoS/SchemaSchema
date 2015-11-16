@@ -8,7 +8,6 @@ import togos.lang.BaseSourceLocation;
 import togos.schemaschema.BaseSchemaObject;
 import togos.schemaschema.Namespace;
 import togos.schemaschema.Predicate;
-import togos.schemaschema.PropertyUtil;
 import togos.schemaschema.SimpleType;
 import togos.schemaschema.Type;
 import togos.schemaschema.Values;

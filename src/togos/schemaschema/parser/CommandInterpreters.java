@@ -11,6 +11,10 @@ public class CommandInterpreters
 		sp.defineCommand("import", sp.new ImportCommandInterpreter());
 	}
 	
+	public static void defineExtensionCommand( SchemaInterpreter sp ) {
+		sp.defineCommand("extend", sp.new ExtensionCommandInterpreter());
+	}
+	
 	public static void defineTypeDefinitionCommands( SchemaInterpreter sp ) {
 		sp.defineCommand("class", sp.new ClassDefinitionCommandInterpreter());
 		sp.defineCommand("enum", sp.new EnumDefinitionCommandInterpreter());
