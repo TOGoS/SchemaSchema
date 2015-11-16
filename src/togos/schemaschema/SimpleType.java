@@ -7,7 +7,12 @@ public class SimpleType extends BaseSchemaObject implements Type
 {
 	public SimpleType( String name, String longName, Type typeType, SourceLocation sLoc ) {
 		super(name, longName, sLoc);
-		if( typeType != null ) PropertyUtil.add( properties, Core.TYPE, typeType );
+		if( typeType != null ) {
+			if( Core.TYPE == null ) {
+				throw new RuntimeException("Core.TYPE hasn't been defined yet!");
+			}
+			PropertyUtil.add( properties, Core.TYPE, typeType );
+		}
 	}
 	
 	public SimpleType( String name, String longName, SourceLocation sLoc ) {

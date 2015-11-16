@@ -8,6 +8,7 @@ import togos.lang.BaseSourceLocation;
 import togos.schemaschema.BaseSchemaObject;
 import togos.schemaschema.Namespace;
 import togos.schemaschema.Predicate;
+import togos.schemaschema.PropertyUtil;
 import togos.schemaschema.SimpleType;
 import togos.schemaschema.Type;
 import togos.schemaschema.Values;
@@ -63,16 +64,22 @@ public class Core
 		fixedUp = true;
 	}
 	
-	// This needs to be defined right away
+	// These needs to be defined right away, since they are referenced by all other definitions
+	// including their own!
 	public static final SimpleType CLASS     = new SimpleType("class", TYPES_NS.prefix+"Class", BaseSourceLocation.NONE);
 	public static final SimpleType PREDICATE = new SimpleType("predicate", TYPES_NS.prefix+"Predicate", BaseSourceLocation.NONE);
+	public static final Predicate  TYPE      = Predicate.getWithoutInitializing(RDF_NS, "type");
+	static {
+		predefinePredicate(RDF_NS, "type", CLASS, null);
+	}
+	
+	// 'Types' reference CLASS and PREDICATE.
+	// Therefore we cannot reference Types.anything before they are defined! 
 	
 	public static final Predicate COMMENT  = predefinePredicate(NS, "comment", Types.STRING, "a note about the subject");
 	
 	public static final Predicate NAME     = predefinePredicate(NS, "name", Types.STRING, "short, natural-language name of the subject");
 	public static final Predicate LONGNAME = predefinePredicate(NS, "long name", Types.STRING, "globally unique name; usually in URI form");
-	
-	public static final Predicate TYPE         = predefinePredicate(RDF_NS, "type", Types.CLASS, null);
 	
 	public static final Predicate EXTENDS      = predefinePredicate(RDFS_NS, "is subclass of", Types.CLASS, null);
 	public static final Predicate IS_ENUM_TYPE = predefinePredicate(NS, "is enum type", Types.BOOLEAN, "indicates that the subject is a type that defines a list of valid named members");
