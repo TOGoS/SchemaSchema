@@ -7,8 +7,10 @@ import java.io.PrintStream;
 import java.io.Reader;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -839,8 +841,35 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 		importables.addNamespace(ns);
 	}
 	
-	protected SchemaObject evaluate( SchemaObject v, Parameterized[] parameters ) throws CompileError {
+	protected static <T> List<T> appended( List<T> l, T last ) {
+		ArrayList<T> al = new ArrayList<T>(l.size()+1);
+		for( int i=0; i<l.size(); ++i ) al.add(l.get(i));
+		al.add(last);
+		return al;
+	}
+	
+	/**
+	 * Given a value, apply any parameters to it to generate a different value,
+	 * e.g. by evaluating v as a function, if it is one.
+	 * If no parameters, the original value is returned.
+	 */
+	protected SchemaObject parameterize( SchemaObject v, Parameterized[] parameters, List<SourceLocation> trace ) throws CompileError {
 		if( parameters.length > 0 ) {
+			// Is it a function?
+			if( v.getScalarValue() instanceof Macro ) {
+				try {
+					return ((Macro)v.getScalarValue()).apply(this, parameters, trace);
+				} catch( ScriptError e ) {
+					throw new CompileError("Error while evaluating macro", e, trace);
+				}
+			}
+			if( v.getScalarValue() instanceof Function ) {
+				try {
+					return FunctionMacro.apply( (Function)v.getScalarValue(), this, parameters, trace);
+				} catch( ScriptError e ) {
+					throw new CompileError("Error while evaluating function", e, trace);
+				}
+			}			
 			throw new CompileError("Don't know how to parameterize "+v.getClass(), parameters[0].sLoc);
 		}
 		return v;
@@ -854,19 +883,23 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 	 * @return
 	 * @throws CompileError
 	 */
-	protected SchemaObject evaluate( Predicate context, Parameterized p ) throws CompileError {
-		if( p.subject.words.length == 1 && p.subject.words[0].quoting == Token.Type.DOUBLE_QUOTED_STRING ) {
-			return BaseSchemaObject.forScalar(p.subject.unquotedText(), p.subject.sLoc);
-		}
+	protected SchemaObject evaluate( Predicate context, Parameterized p, List<SourceLocation> trace) throws CompileError {
+		SchemaObject obviousValue = null;
 		
 		String name = p.subject.unquotedText();
-
-		if( INTEGER_REGEX.matcher(name).matches() ) {
-			return BaseSchemaObject.forScalar(Long.parseLong(name), p.subject.sLoc);
+		
+		if( p.subject.words.length == 1 && p.subject.words[0].quoting == Token.Type.DOUBLE_QUOTED_STRING ) {
+			obviousValue = BaseSchemaObject.forScalar(p.subject.unquotedText(), p.subject.sLoc);
+		} else {
+			if( INTEGER_REGEX.matcher(name).matches() ) {
+				obviousValue = BaseSchemaObject.forScalar(Long.parseLong(name), p.subject.sLoc);
+			}
 		}
 		
 		Set<SchemaObject> possibleValues = new LinkedHashSet<SchemaObject>();
-		if( context != null ) {
+		if( obviousValue != null ) {
+			possibleValues.add(obviousValue);
+		} else if( context != null ) {
 			for( Type t : context.getObjectTypes() ) {
 				if( t instanceof EnumType ) {
 					for( SchemaObject enumValue : ((EnumType)t).getValidValues() ) {
@@ -890,10 +923,14 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 			throw new CompileError("Symbol "+Word.quote(name)+" is ambiguous", p.subject.sLoc);
 		} else {
 			for( SchemaObject v : possibleValues ) {
-				return evaluate( v, p.parameters );
+				return parameterize( v, p.parameters, trace );
 			}
 			throw new RuntimeException("Somehow foreach body wasn't evaluated for single-item set");
 		}
+	}
+	
+	protected SchemaObject evaluate( Predicate context, Parameterized p ) throws CompileError {
+		return evaluate(context, p, Arrays.asList(p.sLoc));
 	}
 	
 	protected FieldSpec defineSimpleField(
