@@ -355,7 +355,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 			} else {
 				// Otherwise instances are just generic objects and
 				// will use the plain old object interpreter
-				instanceInterpreter = new ObjectCommandInterpreter();
+				instanceInterpreter = new ObjectCommandInterpreter(t);
 			}
 			commandInterpreters.put(t.getName(), instanceInterpreter, allowRedefinition, t.getSourceLocation());
 		}
