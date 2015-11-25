@@ -18,7 +18,7 @@ public class Macros
 	public static final Namespace FUNCTIONS_NS = Namespace.getInstance("http://ns.nuke24.net/Schema/Functions/");
 	
 	protected static Function defun(String name, Function f) {
-		String longName = FUNCTIONS_NS.prefix+WordUtil.toCamelCase(name);
+		String longName = FUNCTIONS_NS.prefix+WordUtil.toPascalCase(name);
 		BaseSchemaObject bso = new BaseSchemaObject(name, longName, BaseSourceLocation.NONE);
 		bso.scalarValue = f;
 		PropertyUtil.add(bso.getProperties(), Core.TYPE, Types.FUNCTION);
