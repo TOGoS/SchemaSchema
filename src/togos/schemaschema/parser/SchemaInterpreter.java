@@ -729,7 +729,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 	public SchemaInterpreter() { }
 	
 	public void defineThing( String name, SchemaObject v, boolean allowRedefinition ) throws CompileError {
-		things.put(v.getName(), v, allowRedefinition, v.getSourceLocation());
+		things.put(name, v, allowRedefinition, v.getSourceLocation());
 		_data( v );
 	}
 	
