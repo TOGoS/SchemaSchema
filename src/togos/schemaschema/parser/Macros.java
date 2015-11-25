@@ -2,12 +2,15 @@ package togos.schemaschema.parser;
 
 import java.util.List;
 
+import togos.codeemitter.WordUtil;
 import togos.lang.BaseSourceLocation;
 import togos.lang.ScriptError;
 import togos.lang.SourceLocation;
 import togos.schemaschema.BaseSchemaObject;
 import togos.schemaschema.Namespace;
+import togos.schemaschema.PropertyUtil;
 import togos.schemaschema.SchemaObject;
+import togos.schemaschema.namespaces.Core;
 import togos.schemaschema.namespaces.Types;
 
 public class Macros
@@ -15,7 +18,11 @@ public class Macros
 	public static final Namespace FUNCTIONS_NS = Namespace.getInstance("http://ns.nuke24.net/Schema/Functions/");
 	
 	protected static Function defun(String name, Function f) {
-		FUNCTIONS_NS.addItem(name, BaseSchemaObject.forScalar(f, name, Types.FUNCTION, BaseSourceLocation.NONE));
+		String longName = FUNCTIONS_NS.prefix+WordUtil.toCamelCase(name);
+		BaseSchemaObject bso = new BaseSchemaObject(name, longName, BaseSourceLocation.NONE);
+		bso.scalarValue = f;
+		PropertyUtil.add(bso.getProperties(), Core.TYPE, Types.FUNCTION);
+		FUNCTIONS_NS.addItem(name, bso);
 		return f;
 	}
 	
