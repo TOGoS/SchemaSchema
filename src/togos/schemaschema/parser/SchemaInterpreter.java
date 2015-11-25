@@ -139,6 +139,38 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 		}
 	}
 	
+	class AliasCommandInterpreter implements CommandInterpreter {
+		@Override public boolean interpretCommand(Command cmd, int cmdPrefixLength) throws CompileError {
+			Phrase cmdPhrase = cmd.subject.subject;
+			boolean allowRedefinition;
+			if( cmdPrefixLength >= 2 && cmdPhrase.startsWithWord("redefine") ) {
+				cmdPhrase = cmdPhrase.tail(1);
+				--cmdPrefixLength;
+				allowRedefinition = true;
+			} else {
+				allowRedefinition = false;
+			}
+			
+			
+			if( cmd.modifiers.length > 0 ) {
+				throw new CompileError("'alias' command cannot include modifiers", cmd.modifiers[0].sLoc);
+			}
+			if( cmd.body.commands.length == 0 ) {
+				throw new CompileError("'alias' requies a body", cmd.sLoc);
+			}
+			if( cmd.body.commands.length > 1 ) {
+				throw new CompileError("'alias' requires exactly one command as its body; found "+cmd.body.commands.length, cmd.body.commands[1].sLoc);
+			}
+			if( cmd.body.commands[0].modifiers.length > 0 ) {
+				throw new CompileError("'alias' body cannot have modifiers", cmd.body.commands[0].modifiers[0].sLoc);
+			}
+			String alias = cmd.subject.subject.tail(cmdPrefixLength).unquotedText();
+			SchemaObject value = evaluate(null, cmd.body.commands[0].subject);
+			defineThing(alias, value, allowRedefinition);
+			return true;
+		}
+	}
+	
 	/**
 	 * Allows you to add additional information to already-defined objects.
 	 * e.g.

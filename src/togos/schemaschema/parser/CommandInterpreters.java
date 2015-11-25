@@ -7,6 +7,10 @@ public class CommandInterpreters
 {
 	private CommandInterpreters() { }
 	
+	public static void defineAliasCommand( SchemaInterpreter sp ) {
+		sp.defineCommand("alias", sp.new AliasCommandInterpreter());
+	}
+	
 	public static void defineImportCommand( SchemaInterpreter sp ) {
 		sp.defineCommand("import", sp.new ImportCommandInterpreter());
 	}
