@@ -67,10 +67,14 @@ public class Core
 	// including their own!
 	public static final SimpleType CLASS     = new SimpleType("class", TYPES_NS.prefix+"Class", BaseSourceLocation.NONE);
 	public static final SimpleType PREDICATE = new SimpleType("predicate", TYPES_NS.prefix+"Predicate", BaseSourceLocation.NONE);
-	public static final Predicate  TYPE      = Predicate.getWithoutInitializing(RDF_NS, "type");
+	public static final Predicate  TYPE      = predefinePredicate(RDF_NS, "type", CLASS, null);
 	static {
+		// 'type' wasn't defined when 'type' was defined, so we couldn't say that type's type was class!
+		// This fixes that up.
 		predefinePredicate(RDF_NS, "type", CLASS, null);
 	}
+	public static final Predicate  EXTENDS   = predefinePredicate(RDFS_NS, "is subclass of", CLASS, null);
+	public static final Predicate  ITEM_TYPE = predefinePredicate(NS, "item type", CLASS, "for collections (or collection classes) indicates the type of items of the collection");
 	
 	// 'Types' reference CLASS and PREDICATE.
 	// Therefore we cannot reference Types.anything before they are defined! 
@@ -80,7 +84,6 @@ public class Core
 	public static final Predicate NAME     = predefinePredicate(NS, "name", Types.STRING, "short, natural-language name of the subject");
 	public static final Predicate LONGNAME = predefinePredicate(NS, "long name", Types.STRING, "globally unique name; usually in URI form");
 	
-	public static final Predicate EXTENDS      = predefinePredicate(RDFS_NS, "is subclass of", Types.CLASS, null);
 	public static final Predicate IS_ENUM_TYPE = predefinePredicate(NS, "is enum type", Types.BOOLEAN, "indicates that the subject is a type that defines a list of valid named members");
 	
 	// Field/predicate properties

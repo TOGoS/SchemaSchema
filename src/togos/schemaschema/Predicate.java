@@ -7,7 +7,6 @@ import togos.codeemitter.WordUtil;
 import togos.lang.BaseSourceLocation;
 import togos.lang.SourceLocation;
 import togos.schemaschema.namespaces.Core;
-import togos.schemaschema.namespaces.Types;
 import togos.schemaschema.parser.ast.Word;
 
 public class Predicate extends BaseSchemaObject
@@ -36,8 +35,8 @@ public class Predicate extends BaseSchemaObject
 
 	public Predicate(String name, String longName, SourceLocation sLoc) {
 		super(name, longName, sLoc);
-		if( Core.TYPE != null && Types.PREDICATE != null ) {
-			setProperty(Core.TYPE, Types.PREDICATE);
+		if( Core.TYPE != null && Core.PREDICATE != null ) {
+			setProperty(Core.TYPE, Core.PREDICATE);
 			// otherwise it will need fixing-up as in Core.java
 		}
 	}

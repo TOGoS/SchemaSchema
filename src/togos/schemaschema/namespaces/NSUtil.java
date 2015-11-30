@@ -27,4 +27,10 @@ public class NSUtil
 		ns.addItem(cName, t);
 		return t;
 	}
+
+	public static SimpleType defineType( Namespace ns, String name, Type superType ) {
+		SimpleType t = defineType(ns, name);
+		if( superType != null ) t.setProperty(Core.EXTENDS, superType);
+		return t;
+	}
 }
