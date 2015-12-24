@@ -206,7 +206,6 @@ public class Tokenizer extends BaseStreamSource<Token,ScriptError> implements St
 				state = State.SINGLE_ANGLE_STRING;
 				quoteDepth = 1;
 			} else if( c == '«' ) {
-				System.err.println("Oh here comes a « string");
 				state = State.DOUBLE_ANGLE_STRING;
 				quoteDepth = 1;
 			} else if( isSymbol(c) ) {
