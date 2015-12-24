@@ -106,8 +106,6 @@ public class Tokenizer extends BaseStreamSource<Token,ScriptError> implements St
 	}
 	
 	protected void data( char c ) throws ScriptError {
-		System.err.println("Got char "+(int)c+": "+c);
-		
 		switch( state ) {
 		case SINGLE_QUOTED_STRING_ESCAPE:
 		case DOUBLE_QUOTED_STRING_ESCAPE:
