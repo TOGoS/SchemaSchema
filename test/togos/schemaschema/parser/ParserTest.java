@@ -18,7 +18,11 @@ public class ParserTest extends TestCase
 			"foo"
 		);
 	}
-
+	
+	public void testLiteralString() throws Exception {
+		testParse( "\"foo bar \\\" <- quote\"" );
+	}
+	
 	public void testComplicatedCommand() throws Exception {
 		testParse( "foo 'bar baz' : quux(xyzzy) : xuuy quuz('foo bar'(baz)) = what a fine day(apple jacks) : throne" );
 	}
