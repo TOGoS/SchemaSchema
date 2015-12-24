@@ -24,11 +24,11 @@ public class ParserTest extends TestCase
 	}
 	
 	public void testNoEscapeWords() throws Exception {
-		testParse("'single ‹nestable› \\\\t \\\' \"'", "‹single ‹nestable› \\t ' \"›");
+		testParse("'single â€¹nestableâ€º \\\\t \\\' \"'", "â€¹single â€¹nestableâ€º \\t ' \"â€º");
 	}
 	
 	public void testNoEscapeString() throws Exception {
-		testParse("\"double «nestable» \\\\t ' \\\"\"", "«double «nestable» \\t ' \"»");
+		testParse("\"double Â«nestableÂ» \\\\t ' \\\"\"", "Â«double Â«nestableÂ» \\t ' \"Â»");
 	}
 	
 	public void testComplicatedCommand() throws Exception {

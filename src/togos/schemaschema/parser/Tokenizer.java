@@ -87,10 +87,10 @@ public class Tokenizer extends BaseStreamSource<Token,ScriptError> implements St
 	protected static boolean isQuote( char c ) {
 		switch(c) {
 		case '\'': case '"':
-		case 'ë': case 'í':
-		case 'ì': case 'î':
-		case 'ã': case 'õ':
-		case '´': case 'ª':
+		case '‚Äò': case '‚Äô':
+		case '‚Äú': case '‚Äù':
+		case '‚Äπ': case '‚Ä∫':
+		case '¬´': case '¬ª':
 			return true;
 		default:
 			return false;
@@ -106,6 +106,8 @@ public class Tokenizer extends BaseStreamSource<Token,ScriptError> implements St
 	}
 	
 	protected void data( char c ) throws ScriptError {
+		System.err.println("Got char "+(int)c+": "+c);
+		
 		switch( state ) {
 		case SINGLE_QUOTED_STRING_ESCAPE:
 		case DOUBLE_QUOTED_STRING_ESCAPE:
@@ -140,18 +142,18 @@ public class Tokenizer extends BaseStreamSource<Token,ScriptError> implements St
 			}
 			break;
 		case SINGLE_ANGLE_STRING:
-			if( c == 'õ' && --quoteDepth == 0 ) {
+			if( c == '‚Ä∫' && --quoteDepth == 0 ) {
 				flushToken( State.WORD_BOUNDARY );
 			} else {
-				if( c == 'ã' ) ++quoteDepth;
+				if( c == '‚Äπ' ) ++quoteDepth;
 				tokenBuffer[length++] = c;
 			}
 			break;
 		case DOUBLE_ANGLE_STRING:
-			if( c == 'ª' && --quoteDepth == 0 ) {
+			if( c == '¬ª' && --quoteDepth == 0 ) {
 				flushToken( State.WORD_BOUNDARY );
 			} else {
-				if( c == '´' ) ++quoteDepth;
+				if( c == '¬´' ) ++quoteDepth;
 				tokenBuffer[length++] = c;
 			}
 			break;
@@ -202,10 +204,11 @@ public class Tokenizer extends BaseStreamSource<Token,ScriptError> implements St
 				state = State.DOUBLE_QUOTED_STRING;
 			} else if( c == '\'' ) {
 				state = State.SINGLE_QUOTED_STRING;
-			} else if( c == 'ã' ) {
+			} else if( c == '‚Äπ' ) {
 				state = State.SINGLE_ANGLE_STRING;
 				quoteDepth = 1;
-			} else if( c == '´' ) {
+			} else if( c == '¬´' ) {
+				System.err.println("Oh here comes a ¬´ string");
 				state = State.DOUBLE_ANGLE_STRING;
 				quoteDepth = 1;
 			} else if( isSymbol(c) ) {
