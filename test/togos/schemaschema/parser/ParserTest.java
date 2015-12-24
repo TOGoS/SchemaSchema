@@ -23,6 +23,14 @@ public class ParserTest extends TestCase
 		testParse( "\"foo bar \\\" <- quote\"" );
 	}
 	
+	public void testNoEscapeWords() throws Exception {
+		testParse("'single ‹nestable› \\\\t \\\' \"'", "‹single ‹nestable› \\t ' \"›");
+	}
+	
+	public void testNoEscapeString() throws Exception {
+		testParse("\"double «nestable» \\\\t ' \\\"\"", "«double «nestable» \\t ' \"»");
+	}
+	
 	public void testComplicatedCommand() throws Exception {
 		testParse( "foo 'bar baz' : quux(xyzzy) : xuuy quuz('foo bar'(baz)) = what a fine day(apple jacks) : throne" );
 	}

@@ -22,6 +22,8 @@ public class Tokenizer extends BaseStreamSource<Token,ScriptError> implements St
 		SINGLE_QUOTED_STRING_ESCAPE( SINGLE_QUOTED_STRING ),
 		DOUBLE_QUOTED_STRING( NO_TOKEN, Token.Type.DOUBLE_QUOTED_STRING ),
 		DOUBLE_QUOTED_STRING_ESCAPE( DOUBLE_QUOTED_STRING ),
+		SINGLE_ANGLE_STRING( NO_TOKEN, Token.Type.SINGLE_QUOTED_STRING ),
+		DOUBLE_ANGLE_STRING( NO_TOKEN, Token.Type.DOUBLE_QUOTED_STRING ),
 		LINE_COMMENT;
 		
 		public final State parentState;
@@ -44,6 +46,7 @@ public class Tokenizer extends BaseStreamSource<Token,ScriptError> implements St
 	protected char[] tokenBuffer = new char[1024];
 	protected int length = 0;
 	protected State state = State.NO_TOKEN;
+	protected int quoteDepth;
 	
 	public void setSourceLocation( String filename ) {
 		setSourceLocation( filename, 1, 1 );
@@ -82,7 +85,16 @@ public class Tokenizer extends BaseStreamSource<Token,ScriptError> implements St
 	}
 	
 	protected static boolean isQuote( char c ) {
-		return c == '\'' || c == '"';
+		switch(c) {
+		case '\'': case '"':
+		case '‘': case '’':
+		case '“': case '”':
+		case '‹': case '›':
+		case '«': case '»':
+			return true;
+		default:
+			return false;
+		}
 	}
 	
 	protected static boolean isComment( char c ) {
@@ -124,6 +136,22 @@ public class Tokenizer extends BaseStreamSource<Token,ScriptError> implements St
 				state = State.SINGLE_QUOTED_STRING_ESCAPE;
 				break;
 			default:
+				tokenBuffer[length++] = c;
+			}
+			break;
+		case SINGLE_ANGLE_STRING:
+			if( c == '›' && --quoteDepth == 0 ) {
+				flushToken( State.WORD_BOUNDARY );
+			} else {
+				if( c == '‹' ) ++quoteDepth;
+				tokenBuffer[length++] = c;
+			}
+			break;
+		case DOUBLE_ANGLE_STRING:
+			if( c == '»' && --quoteDepth == 0 ) {
+				flushToken( State.WORD_BOUNDARY );
+			} else {
+				if( c == '«' ) ++quoteDepth;
 				tokenBuffer[length++] = c;
 			}
 			break;
@@ -174,6 +202,12 @@ public class Tokenizer extends BaseStreamSource<Token,ScriptError> implements St
 				state = State.DOUBLE_QUOTED_STRING;
 			} else if( c == '\'' ) {
 				state = State.SINGLE_QUOTED_STRING;
+			} else if( c == '‹' ) {
+				state = State.SINGLE_ANGLE_STRING;
+				quoteDepth = 1;
+			} else if( c == '«' ) {
+				state = State.DOUBLE_ANGLE_STRING;
+				quoteDepth = 1;
 			} else if( isSymbol(c) ) {
 				state = State.SYMBOL;
 				tokenBuffer[length++] = c;
@@ -201,7 +235,13 @@ public class Tokenizer extends BaseStreamSource<Token,ScriptError> implements St
 		}
 	}
 	
-	protected void flushToken( State newState ) throws ScriptError {
+	protected void flushToken( final State newState ) throws ScriptError {
+		if( newState == null ) {
+			throw new RuntimeException("Oh you'd better not flushToken(null)!");
+		}
+		if( state == null ) {
+			throw new RuntimeException("Oh no, somehow tokenizer state became null.  >:(");
+		}
 		if( state.tokenType != null ) {
 			_data( new Token( state.tokenType, new String(tokenBuffer,0,length), filename, lineNumber, columnNumber ) );
 		}
