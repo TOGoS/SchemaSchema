@@ -75,6 +75,6 @@ public final class StringUtil
 	}
 	
 	public static final String unindent( String text ) {
-		return join("\n",unindent(text.split("\n")));
+		return join("\n",unindent(text.split("\r*[\r\n]")));
 	}
 }

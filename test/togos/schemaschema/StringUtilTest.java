@@ -26,4 +26,16 @@ public class StringUtilTest extends TestCase
 			"\tbut squirrels are rad always",
 			StringUtil.unindent("   \n  birds are cool sometimes\n  \tbut squirrels are rad always\n \t \t"));
 	}
+	
+	public void testUnindentWithCRLF() {
+		assertEquals(
+			"Birds are cool sometimes.\nI like cats.",
+			StringUtil.unindent("  Birds are cool sometimes.\r\n  I like cats.\n  \n  \r\r\n"));
+	}
+	
+	public void testUnindentWithCRLF2() {
+		assertEquals(
+			"Birds are cool sometimes.\nI like cats.",
+			StringUtil.unindent("  Birds are cool sometimes.\r\n  I like cats.\r"));
+	}
 }
