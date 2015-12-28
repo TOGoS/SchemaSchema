@@ -52,7 +52,7 @@ public final class StringUtil
 		
 		for( int i=firstTextLine; i<=lastTextLine; ++i ) {
 			Matcher m = LEADING_WHITESPACE.matcher(lines[i]);
-			if( !m.matches() ) throw new RuntimeException("That should always match!");
+			if( !m.matches() ) throw new RuntimeException("The leading whitespace regex should always match!  But somehow this line didn't: {"+lines[i]+'}');
 			String lead = m.group(1);
 			if( longestConsistentWhitespace == null ) {
 				longestConsistentWhitespace = lead;
