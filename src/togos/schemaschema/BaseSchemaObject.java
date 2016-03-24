@@ -77,7 +77,10 @@ public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 	
 	@Override public SourceLocation getSourceLocation() { return sLoc; }
 	@Override public String getName() {
-		return PropertyUtil.getFirstInheritedScalar(this, Core.NAME, String.class, name);
+		if( name != null ) return name;
+		// In case getName() gets called (e.g. for an error message) in the course of getFirstInheritedScalar:
+		name = "...calculating name from inherited values...";
+		return name = PropertyUtil.getFirstInheritedScalar(this, Core.NAME, String.class, name);
 	}
 	@Override public String getLongName() {
 		return PropertyUtil.getFirstInheritedScalar(this, Core.LONGNAME, String.class, longName);
