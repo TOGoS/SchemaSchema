@@ -214,6 +214,9 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 			} else {
 				allowRedefinition = false;
 			}
+			
+			if( cmdPhrase.tail(cmdPrefixLength).words.length == 0 ) return false;
+			
 			interpretDefinition( cmdPhrase.tail(cmdPrefixLength).unquotedText(), cmd.modifiers, cmd.body, allowRedefinition, cmd.sLoc );
 			return true;
 		}
