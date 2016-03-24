@@ -158,7 +158,7 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 				throw new CompileError("'alias' command cannot include modifiers", cmd.modifiers[0].sLoc);
 			}
 			if( cmd.body.commands.length == 0 ) {
-				throw new CompileError("'alias' requies a body", cmd.sLoc);
+				throw new CompileError("'alias' requires a body", cmd.sLoc);
 			}
 			if( cmd.body.commands.length > 1 ) {
 				throw new CompileError("'alias' requires exactly one command as its body; found "+cmd.body.commands.length, cmd.body.commands[1].sLoc);
@@ -169,6 +169,29 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 			String alias = cmd.subject.subject.tail(cmdPrefixLength).unquotedText();
 			SchemaObject value = evaluate(null, cmd.body.commands[0].subject);
 			defineThing(alias, value, allowRedefinition);
+			return true;
+		}
+	}
+	
+	class UndefineCommandInterpreter implements CommandInterpreter {
+		@Override public boolean interpretCommand(Command cmd, int cmdPrefixLength) throws CompileError {
+			Phrase undefining = cmd.subject.subject.tail(cmdPrefixLength);
+			if( undefining.words.length == 0 ) return false;
+			
+			if( cmd.subject.parameters.length != 0 ) {
+				throw new CompileError("'undefine' command cannot include parameters", cmd.subject.parameters[0].sLoc);
+			}
+			if( cmd.modifiers.length > 0 ) {
+				throw new CompileError("'undefine' command cannot include modifiers", cmd.modifiers[0].sLoc);
+			}
+			if( cmd.body.commands.length != 0 ) {
+				throw new CompileError("'undefine' cannot include a body", cmd.body.sLoc);
+			}
+			
+			String name = undefining.toString();
+			if( undefineThing(undefining.toString()) == null ) {
+				System.err.println("Warning: undefining '"+name+"', but it wasn't defined in the first place ("+BaseSourceLocation.toString(cmd.sLoc)+")");
+			}
 			return true;
 		}
 	}
@@ -732,6 +755,10 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 	protected Namespace importables = new Namespace("");
 	
 	public SchemaInterpreter() { }
+	
+	public SchemaObject undefineThing( String name ) {
+		return things.values.remove(name);
+	}
 	
 	public void defineThing( String name, SchemaObject v, boolean allowRedefinition ) throws CompileError {
 		things.put(name, v, allowRedefinition, v.getSourceLocation());

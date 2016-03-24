@@ -7,6 +7,10 @@ public class CommandInterpreters
 {
 	private CommandInterpreters() { }
 	
+	public static void defineUndefineCommand( SchemaInterpreter sp ) {
+		sp.defineCommand("undefine", sp.new UndefineCommandInterpreter());
+	}
+	
 	public static void defineAliasCommand( SchemaInterpreter sp ) {
 		sp.defineCommand("alias", sp.new AliasCommandInterpreter());
 	}
