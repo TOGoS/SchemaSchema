@@ -43,8 +43,7 @@ public class Tokenizer extends BaseStreamSource<Token,ScriptError> implements St
 	public String filename = "unknown source";
 	public int lineNumber = 1, columnNumber = 1;
 	public int tabWidth = 4; // Because it's the default in Eclipse.
-	protected char[] tokenBuffer = new char[1024];
-	protected int length = 0;
+	protected StringBuilder tokenBuffer = new StringBuilder();
 	protected State state = State.NO_TOKEN;
 	protected int quoteDepth;
 	
@@ -111,16 +110,16 @@ public class Tokenizer extends BaseStreamSource<Token,ScriptError> implements St
 		case DOUBLE_QUOTED_STRING_ESCAPE:
 			switch( c ) {
 			case '\\': case '\'': case '"':
-				tokenBuffer[length++] = c;
+				tokenBuffer.append(c);
 				break;
 			case 'n':
-				tokenBuffer[length++] = '\n';
+				tokenBuffer.append('\n');
 				break;
 			case 'r':
-				tokenBuffer[length++] = '\r';
+				tokenBuffer.append('\r');
 				break;
 			case 't':
-				tokenBuffer[length++] = '\t';
+				tokenBuffer.append('\t');
 				break;
 			default:
 				throw new ParseError("Invalid escape character: '"+c+"'", getSourceLocation());
@@ -136,7 +135,7 @@ public class Tokenizer extends BaseStreamSource<Token,ScriptError> implements St
 				state = State.SINGLE_QUOTED_STRING_ESCAPE;
 				break;
 			default:
-				tokenBuffer[length++] = c;
+				tokenBuffer.append(c);
 			}
 			break;
 		case SINGLE_ANGLE_STRING:
@@ -144,7 +143,7 @@ public class Tokenizer extends BaseStreamSource<Token,ScriptError> implements St
 				flushToken( State.WORD_BOUNDARY );
 			} else {
 				if( c == '‹' ) ++quoteDepth;
-				tokenBuffer[length++] = c;
+				tokenBuffer.append(c);
 			}
 			break;
 		case DOUBLE_ANGLE_STRING:
@@ -152,7 +151,7 @@ public class Tokenizer extends BaseStreamSource<Token,ScriptError> implements St
 				flushToken( State.WORD_BOUNDARY );
 			} else {
 				if( c == '«' ) ++quoteDepth;
-				tokenBuffer[length++] = c;
+				tokenBuffer.append(c);
 			}
 			break;
 		case DOUBLE_QUOTED_STRING:
@@ -164,14 +163,14 @@ public class Tokenizer extends BaseStreamSource<Token,ScriptError> implements St
 				state = State.DOUBLE_QUOTED_STRING_ESCAPE;
 				break;
 			default:
-				tokenBuffer[length++] = c;
+				tokenBuffer.append(c);
 			}
 			break;
 		case LINE_COMMENT:
 			if( c == '\n' ) {
 				state = State.SYMBOL;
-				tokenBuffer[0] = c;
-				length = 1;
+				tokenBuffer.setLength(0);
+				tokenBuffer.append(c);
 				flushToken( State.NO_TOKEN );
 			}
 			break;
@@ -180,14 +179,14 @@ public class Tokenizer extends BaseStreamSource<Token,ScriptError> implements St
 				throw new ParseError("No quotes allowed here; add some whitespace!", getSourceLocation());
 			} else if( isSymbol(c) ) {
 				flushToken( State.SYMBOL );
-				tokenBuffer[length++] = c;
+				tokenBuffer.append(c);
 				flushToken( State.NO_TOKEN );
 			} else if( isWhitespace(c) ) {
 				flushToken( State.NO_TOKEN );
 			} else if( isComment(c) ) {
 				flushToken( State.LINE_COMMENT );
 			} else {
-				tokenBuffer[length++] = c;
+				tokenBuffer.append(c);
 			}
 			break;
 		case WORD_BOUNDARY:
@@ -210,7 +209,7 @@ public class Tokenizer extends BaseStreamSource<Token,ScriptError> implements St
 				quoteDepth = 1;
 			} else if( isSymbol(c) ) {
 				state = State.SYMBOL;
-				tokenBuffer[length++] = c;
+				tokenBuffer.append(c);
 				flushToken( State.NO_TOKEN );
 			} else if( isComment(c) ) {
 				flushToken( State.LINE_COMMENT );
@@ -218,7 +217,7 @@ public class Tokenizer extends BaseStreamSource<Token,ScriptError> implements St
 				state = State.NO_TOKEN;
 			} else {
 				state = State.BAREWORD;
-				tokenBuffer[length++] = c;
+				tokenBuffer.append(c);
 			}
 			break;
 		default:
@@ -243,10 +242,10 @@ public class Tokenizer extends BaseStreamSource<Token,ScriptError> implements St
 			throw new RuntimeException("Oh no, somehow tokenizer state became null.  >:(");
 		}
 		if( state.tokenType != null ) {
-			_data( new Token( state.tokenType, new String(tokenBuffer,0,length), filename, lineNumber, columnNumber ) );
+			_data( new Token( state.tokenType, tokenBuffer.toString(), filename, lineNumber, columnNumber ) );
 		}
 		state = newState;
-		length = 0;
+		tokenBuffer.setLength(0);
 	}
 	
 	@Override
