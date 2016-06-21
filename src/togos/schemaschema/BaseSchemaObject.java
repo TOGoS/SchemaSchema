@@ -19,7 +19,10 @@ public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 	public Object scalarValue;
 	public final Map<Predicate,Set<SchemaObject>> properties = new LinkedHashMap<Predicate,Set<SchemaObject>>();
 	
+	// These should really not be static,
+	// but on some context object or something that gets passed around.
 	public static final WeakHashMap<Object,BaseSchemaObject> scalarSchemaObjects = new WeakHashMap<Object,BaseSchemaObject>();
+	public static final WeakHashMap<String,BaseSchemaObject> uriSchemaObjects = new WeakHashMap<String,BaseSchemaObject>();
 	
 	public static BaseSchemaObject forScalar( Object scalarValue, String name, Type memberOf, SourceLocation sLoc ) {
 		// Do we ALWAYS want to re-use the existing object?
@@ -45,6 +48,18 @@ public class BaseSchemaObject implements SchemaObject, Comparable<SchemaObject>
 	
 	public static BaseSchemaObject forScalar( Object scalarValue ) {
 		return forScalar( scalarValue, BaseSourceLocation.NONE );
+	}
+	
+	public static BaseSchemaObject forUri( String uri, SourceLocation sLoc ) {
+		synchronized( uriSchemaObjects ) {
+			BaseSchemaObject obj = uriSchemaObjects.get(uri);
+			if( obj == null ) {
+				obj = new BaseSchemaObject(null, sLoc);
+				obj.longName = uri;
+				uriSchemaObjects.put(uri, obj);
+			}
+			return obj;
+		}
 	}
 	
 	public BaseSchemaObject( String name, String longName, SourceLocation sLoc ) {

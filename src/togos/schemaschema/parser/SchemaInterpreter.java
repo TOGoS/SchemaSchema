@@ -906,6 +906,8 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 	}
 	
 	protected static final Pattern INTEGER_REGEX = Pattern.compile("\\d+");
+	// TODO: Make a better URI pattern.
+	protected static final Pattern URI_REGEX = Pattern.compile("(?:urn|https?|data|file):.*");
 	
 	/**
 	 * @param context predicate whose object we are evaluating; may be null
@@ -942,21 +944,28 @@ public class SchemaInterpreter extends BaseStreamSource<SchemaObject,CompileErro
 		}
 		
 		if( possibleValues.size() == 0 ) {
-			SchemaObject v = things.get(p.subject);
+			SchemaObject v = things.get(p.subject.unquotedText(), SchemaObject.class, false, false, p.subject.sLoc);
 			if( v != null ) possibleValues.add( v );
 		}
 		
 		if( possibleValues.size() == 0 ) {
+			if( URI_REGEX.matcher(name).matches() ) {
+				// Then this is a reference to the object at the specified URI
+				return BaseSchemaObject.forUri(name, p.subject.sLoc);
+			}
+			
 			throw new CompileError("Unrecognized symbol: "+Word.quote(name), p.subject.sLoc);
-		} else if( possibleValues.size() > 1 ) {
+		}
+		
+		if( possibleValues.size() > 1 ) {
 			// TODO: list definition locations
 			throw new CompileError("Symbol "+Word.quote(name)+" is ambiguous", p.subject.sLoc);
-		} else {
-			for( SchemaObject v : possibleValues ) {
-				return parameterize( v, p.parameters, trace );
-			}
-			throw new RuntimeException("Somehow foreach body wasn't evaluated for single-item set");
 		}
+		
+		for( SchemaObject v : possibleValues ) {
+			return parameterize( v, p.parameters, trace );
+		}
+		throw new RuntimeException("Somehow foreach body wasn't evaluated for single-item set");
 	}
 	
 	protected SchemaObject evaluate( Predicate context, Parameterized p ) throws CompileError {
